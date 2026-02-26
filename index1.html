@@ -1,0 +1,1026 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>AI 漫剧分镜工作台</title>
+  <style>
+    /* --- 全局与主题 --- */
+    :root {
+      --bg-gradient: linear-gradient(135deg, #f5f7fa 0%, #e9ecf1 100%);
+      --bg-main: #f8f9fa;
+      --panel: #ffffff;
+      --text: #212529;
+      --text-muted: #6c757d;
+      --text-light: #495057;
+      --line: #e9ecef;
+      --brand: #4a69ff;
+      --brand-hover: #3b53cc;
+      --brand-light: #eef2ff;
+      --ok: #198754;
+      --bad: #dc3545;
+      --radius: 12px;
+      --shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+      --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.04);
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif;
+      --font-mono: 'SFMono-Regular', Consolas, "Liberation Mono", Menlo, Courier, monospace;
+    }
+    body.dark-mode {
+      --bg-gradient: linear-gradient(135deg, #232526 0%, #414345 100%);
+      --bg-main: #212123;
+      --panel: #2c2c2e;
+      --text: #f0f0f0;
+      --text-muted: #9a9a9e;
+      --text-light: #d1d1d6;
+      --line: #3a3a3c;
+      --brand-light: rgba(74, 105, 255, 0.2);
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body {
+      font-family: var(--font-sans);
+      color: var(--text);
+      background: var(--bg-gradient);
+      overflow: hidden;
+      transition: background-color 0.3s, color 0.3s;
+    }
+
+    /* --- 页面与布局 --- */
+    #setup-page, #app-container { width: 100%; height: 100%; transition: opacity 0.3s ease; }
+    .hidden { display: none !important; }
+    #setup-page { display: flex; align-items: center; justify-content: center; padding: 20px; }
+    .setup-card {
+      width: 100%; max-width: 520px; background: var(--panel); border-radius: var(--radius);
+      box-shadow: var(--shadow); padding: 32px; display: flex; flex-direction: column; gap: 24px;
+    }
+    .setup-card h1 { margin: 0; font-size: 1.75rem; text-align: center; }
+    .setup-card .subtitle { text-align: center; margin-top: -16px; color: var(--text-muted); }
+
+    #app-container { display: flex; flex-direction: column; height: 100%; padding: 20px; gap: 16px; }
+    #app-header {
+      background: var(--panel); border-radius: var(--radius); box-shadow: var(--shadow-sm);
+      padding: 12px 20px; display: flex; align-items: center; gap: 20px; flex-shrink: 0;
+    }
+    #app-nav button { background: none; border: none; font-size: 1rem; color: var(--text-muted); font-weight: 500; cursor: pointer; }
+    #app-nav button.active { color: var(--brand); font-weight: 700; }
+    #main-app { flex-grow: 1; display: grid; grid-template-columns: 420px 1fr; gap: 16px; min-height: 0; }
+    .page-content { display: contents; }
+    .control-panel, .output-panel {
+      background: var(--panel); border-radius: var(--radius); box-shadow: var(--shadow-sm);
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+    .panel-header {
+      padding: 16px 20px; border-bottom: 1px solid var(--line);
+      display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;
+    }
+    .panel-header h2 { margin: 0; font-size: 1.2rem; }
+    .panel-body { padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 24px; }
+
+    /* --- 通用组件 --- */
+    .form-group { display: flex; flex-direction: column; gap: 8px; }
+    .form-group label { font-weight: 500; font-size: 0.9rem; color: var(--text-light); }
+    input, select, button, textarea {
+      font-family: inherit; font-size: 1rem; padding: 10px 14px;
+      border: 1px solid var(--line); border-radius: 8px; background: var(--bg-main);
+      color: var(--text); transition: all 0.2s ease;
+    }
+    input:focus, select:focus, textarea:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-light); }
+    button { cursor: pointer; font-weight: 600; color: #fff; background: var(--brand); border-color: var(--brand); }
+    button:hover { background: var(--brand-hover); border-color: var(--brand-hover); }
+    button.secondary { background: var(--brand-light); color: var(--brand); border-color: var(--line); }
+    body.dark-mode button.secondary { border-color: #444; }
+    button.secondary:hover { background: #dbe4ff; }
+    body.dark-mode button.secondary:hover { background: rgba(74, 105, 255, 0.3); }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+    .hr { height: 1px; background: var(--line); margin: 8px 0; }
+    .mini { font-size: 0.9rem; padding: 6px 12px; }
+    .icon-btn { background: none; border: none; width: 36px; height: 36px; display:flex; align-items:center; justify-content:center; padding: 0; border-radius: 50%; cursor: pointer; }
+    .icon-btn:hover { background: var(--bg-main); }
+    .spacer { flex: 1; }
+
+    /* --- 特定组件 --- */
+    .drop-zone {
+      border: 2px dashed var(--line); border-radius: var(--radius); padding: 40px 20px;
+      text-align: center; color: var(--text-muted); transition: all 0.2s ease;
+    }
+    .drop-zone.dragover { border-color: var(--brand); background: var(--brand-light); }
+    .toggle-buttons { display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap: 10px; }
+    .toggle-buttons button { background: var(--bg-main); color: var(--text-light); border: 1px solid var(--line); }
+    .toggle-buttons button.active { background: var(--brand-light); color: var(--brand); border-color: var(--brand); font-weight: 700; }
+    .output-area { flex-grow: 1; font-family: var(--font-mono); font-size: 0.9rem; line-height: 1.6; white-space: pre-wrap; word-break: break-word; color: var(--text-light); background: var(--bg-main); padding: 16px; border-radius: 8px; }
+    .output-area:empty::before { content: '生成的结果将显示在这里...'; color: var(--text-muted); }
+    #generation-info { font-size: 0.8rem; color: var(--text-muted); padding-top: 12px; border-top: 1px dashed var(--line); margin-top: auto; }
+    
+    /* --- Modals --- */
+    .modal-overlay {
+        position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+        display: none; align-items: center; justify-content: center; z-index: 100;
+    }
+    .modal-content {
+        width: 90%; max-width: 600px; background: var(--panel);
+        border-radius: var(--radius); box-shadow: var(--shadow);
+        max-height: 80vh; display: flex; flex-direction: column;
+    }
+    .modal-list { list-style: none; padding: 0; margin: 0; overflow-y: auto; }
+    .modal-item {
+        padding: 12px 20px; border-bottom: 1px solid var(--line);
+        display: flex; justify-content: space-between; align-items: center; gap: 10px;
+    }
+    .modal-item:hover { background-color: var(--bg-main); }
+    .modal-item:last-child { border-bottom: none; }
+    .modal-item .name { font-weight: 500; flex-grow: 1;}
+    .modal-item .details { font-size: 0.8rem; color: var(--text-muted); }
+  </style>
+</head>
+<body class="dark-mode">
+
+  <!-- ===================== 配置页面 ======================= -->
+  <div id="setup-page">
+    <div class="setup-card">
+        <h1>AI 分镜工作台</h1>
+        <p class="subtitle">开始前，请先配置您的 API</p>
+        <div class="form-group"><label for="cfg-select">已保存的配置</label><select id="cfg-select"></select></div>
+        <div class="hr"></div>
+        <div class="form-group"><label for="cfg-name">配置名称</label><input id="cfg-name" placeholder="例如：我的主力API"></div>
+        <div class="form-group"><label for="cfg-baseurl">Base URL</label><input id="cfg-baseurl" placeholder="https://api.example.com/v1"></div>
+        <div class="form-group"><label for="cfg-apikey">API Key</label><input id="cfg-apikey" type="password" placeholder="sk-..."></div>
+        <div class="form-group"><label for="cfg-model">默认模型 (加载后选择)</label><select id="cfg-model"></select></div>
+        <div style="display: flex; gap: 10px;">
+            <button id="btn-save-cfg">保存配置</button>
+            <button id="btn-fetch-models" class="secondary">加载模型</button>
+        </div>
+        <div id="status-area" style="text-align:center; min-height: 20px;"></div>
+        <button id="btn-continue" disabled>进入工作台</button>
+    </div>
+  </div>
+
+  <!-- ===================== 主应用容器 ===================== -->
+  <div id="app-container" class="hidden">
+    <header id="app-header">
+      <nav id="app-nav">
+        <button data-page="storyboard-page">分镜脚本生成</button>
+        <button data-page="image-prompt-page">分镜图提示词</button>
+      </nav>
+      <div class="spacer"></div>
+      <button id="btn-back-to-setup" class="secondary mini">返回配置</button>
+      <button id="btn-switch-api" class="secondary mini">切换 API / 模型</button>
+      <button id="btn-toggle-darkmode" class="icon-btn" title="切换模式"></button>
+      <button id="btn-history" class="secondary mini">📋 历史记录</button>
+    </header>
+
+    <main id="main-app">
+      <!-- 分镜脚本生成页 (保持不变) -->
+      <div id="storyboard-page" class="page-content hidden">
+        <div class="control-panel">
+          <div class="panel-header"><h2>控制面板</h2></div>
+          <div class="panel-body">
+            <div class="form-group"><label>1. 输入或拖入剧本</label><div class="drop-zone" id="drop-zone-storyboard">将 .txt 或 .md 文件拖到此处</div><textarea id="script-input" placeholder="或在此处粘贴你的剧本..."></textarea></div>
+            <div class="form-group"><label>2. 设定分镜参数</label>
+                <div class="toggle-buttons" id="aspect-ratio-btns"><button data-value="横版" class="active">横版</button><button data-value="竖版">竖版</button></div>
+                <div class="toggle-buttons" id="style-btns">
+                  <button data-value="2D动画" class="active">2D动画</button>
+                  <button data-value="3D动画">3D动画</button>
+                  <button data-value="写实电影">写实电影</button>
+                  <button data-value="自定义">自定义</button>
+                </div>
+                <input id="custom-style-input" placeholder="输入自定义风格，如：水墨、赛博朋克..." style="display: none;">
+                <div class="toggle-buttons" id="duration-btns"><button data-value="1分钟">1分钟</button><button data-value="2分钟">2分钟</button><button data-value="3分钟" class="active">3分钟</button><button data-value="4分钟">4分钟</button></div>
+                <input id="custom-duration-input" type="number" placeholder="或自定义秒数, 如: 90">
+                <div style="display: flex; align-items: center; gap: 10px; margin-top: 8px;">
+                  <input id="shot-count" type="number" placeholder="分镜数 (选填)" style="flex-grow: 1;">
+                  <button id="shot-count-auto" class="secondary" style="width: 120px;">AI自动适配</button>
+                </div>
+            </div>
+            <div class="form-group"><label>3. 输入核心指令</label><textarea id="instruction-input" placeholder="告诉AI它的任务..."></textarea><button id="btn-manage-prompts" class="secondary">管理和使用指令模板</button></div>
+            <button id="btn-generate-storyboard" style="margin-top: auto; padding: 14px;">✨ 生成分镜脚本</button>
+          </div>
+        </div>
+        <div class="output-panel">
+          <div class="panel-header"><h2>生成结果</h2><div><button id="btn-copy-storyboard" class="secondary mini">复制</button><button id="btn-download-storyboard" class="secondary mini">下载 .txt</button></div></div>
+          <div class="panel-body"><div id="output-area-storyboard" class="output-area"></div><div id="generation-info-storyboard" class="generation-info"></div></div>
+        </div>
+      </div>
+
+      <!-- 分镜图提示词页 -->
+      <div id="image-prompt-page" class="page-content hidden">
+        <div class="control-panel">
+          <div class="panel-header"><h2>控制面板</h2></div>
+          <div class="panel-body">
+            <div class="form-group"><label>1. 原剧本（原始故事）</label><div class="drop-zone" id="drop-zone-original">将 .txt 或 .md 文件拖到此处</div><textarea id="original-script-input" placeholder="粘贴你的原剧本..." rows="6"></textarea></div>
+            
+            <div class="form-group">
+              <label>2. 分镜脚本（已生成的分镜）</label>
+              <div class="drop-zone" id="drop-zone-storyboard-script">将 .txt 或 .md 文件拖到此处</div>
+              <textarea id="storyboard-script-input" placeholder="粘贴你的分镜脚本..." rows="6"></textarea>
+              <div style="display: flex; gap: 8px; margin-top: 8px;">
+                <button id="btn-split-script" class="secondary mini">🔍 拆分分镜脚本</button>
+                <button id="btn-reset-split" class="secondary mini" style="display: none;">↺ 重置拆分</button>
+              </div>
+            </div>
+            <div id="split-result-area" style="display: none; margin-top: 8px; border: 1px solid var(--line); border-radius: 8px; padding: 10px; background: var(--bg-main);">
+              <label style="font-weight:500; margin-bottom:5px; display:block;">拆分结果（可手动编辑）</label>
+              <div id="split-list" style="max-height:200px; overflow-y:auto; display:flex; flex-direction:column; gap:6px;"></div>
+            </div>
+
+            <div class="form-group" style="margin-top: 8px;">
+              <label>生成范围</label>
+              <div style="display: flex; gap: 10px; align-items: center;">
+                <span>从</span>
+                <input id="range-start" type="number" min="1" value="1" style="width: 80px;">
+                <span>到</span>
+                <input id="range-end" type="number" min="1" value="1" style="width: 80px;">
+                <span>号分镜</span>
+              </div>
+            </div>
+
+            <div class="form-group"><label>3. 设定生图参数</label>
+              <input id="prompt-aspect-ratio" placeholder="画幅比例, 例如: 16:9, 9:16" value="16:9">
+              <input id="prompt-style" placeholder="画面风格, 例如: 宫崎骏风格, 赛博朋克" value="宫崎骏风格">
+              <div class="toggle-buttons" id="grid-size-btns" style="margin-top: 8px;">
+                <button data-value="2X2四宫格" class="active">2X2四宫格</button>
+                <button data-value="3X3九宫格">3X3九宫格</button>
+              </div>
+            </div>
+            <button id="btn-generate-prompts" style="margin-top: auto; padding: 14px;">🎨 生成分镜图提示词</button>
+          </div>
+        </div>
+        <div class="output-panel">
+          <div class="panel-header"><h2>生成的提示词</h2><div><button id="btn-copy-prompts" class="secondary mini">复制</button><button id="btn-download-prompts" class="secondary mini">下载 .txt</button></div></div>
+          <div class="panel-body">
+            <div id="output-area-prompter" class="output-area"></div>
+            <div id="generation-info-prompter" class="generation-info" style="font-size:0.8rem; color:var(--text-muted); padding-top:8px; border-top:1px dashed var(--line); margin-top:8px;"></div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+  
+  <!-- 指令库模态框 -->
+  <div id="prompt-modal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="panel-header"><h2>指令模板库</h2><button id="btn-close-prompt-modal" class="secondary mini">&times;</button></div>
+      <ul class="modal-list" id="prompt-list"></ul>
+      <div style="padding: 20px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 10px;">
+        <input id="new-prompt-name" placeholder="新指令名称"><textarea id="new-prompt-content" placeholder="指令内容" rows="3"></textarea>
+        <button id="btn-save-prompt">保存为新指令</button>
+      </div>
+    </div>
+  </div>
+  <!-- API 切换模态框 -->
+  <div id="api-switcher-modal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="panel-header"><h2>切换 API / 模型</h2><button id="btn-close-api-modal" class="secondary mini">&times;</button></div>
+        <ul class="modal-list" id="api-list"></ul>
+    </div>
+  </div>
+
+  <!-- 历史记录模态框 -->
+  <div id="history-modal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 800px;">
+      <div class="panel-header">
+        <h2>历史生成记录</h2>
+        <button id="btn-close-history-modal" class="secondary mini">&times;</button>
+      </div>
+      <ul class="modal-list" id="history-list" style="max-height: 60vh;"></ul>
+    </div>
+  </div>
+
+  <script>
+    const LS_KEY = "aicomic_workbench_v5_merged";
+    const HISTORY_KEY = "aicomic_history_v1";
+    let state = {};
+    let splitShots = []; // 存储拆分后的分镜数组
+    let currentGenInfo = {};
+
+    document.addEventListener('DOMContentLoaded', () => {
+        state = loadState();
+        initializeUI();
+        setupRouting();
+        bindAllEvents();
+        loadHistory();
+    });
+
+    function loadState() {
+        const raw = localStorage.getItem(LS_KEY);
+        const defaults = {
+            configs: [], activeCfgId: null, darkMode: true, currentPage: 'storyboard-page',
+            prompts: [
+                { id: 'p1', name: '标准分镜导演', content: '你是一位经验丰富的漫剧导演，擅长电影化叙事。你的任务是将提供的剧本转换成一份详细、专业、可执行的分镜脚本。请确保镜头语言丰富，节奏张弛有度。' },
+                { id: 'p2', name: '快节奏短视频导演', content: '你是一位顶级的短视频内容导演，精通竖屏叙事和快节奏剪辑。请将以下剧本改编成适合短视频平台传播的竖屏分镜脚本，要求前3秒必须吸引人，节奏快，转场多。' }
+            ]
+        };
+        try { return raw ? { ...defaults, ...JSON.parse(raw) } : defaults; } 
+        catch (e) { return defaults; }
+    }
+    function saveState() { localStorage.setItem(LS_KEY, JSON.stringify(state)); }
+
+    let history = [];
+    function loadHistory() {
+        const raw = localStorage.getItem(HISTORY_KEY);
+        try { history = raw ? JSON.parse(raw) : []; } catch { history = []; }
+    }
+    function saveHistory() {
+        localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+    }
+    function addHistoryRecord(record) {
+        history.unshift(record);
+        if (history.length > 50) history.pop();
+        saveHistory();
+    }
+
+    function getActiveCfg() { return state.configs.find(c => c.id === state.activeCfgId); }
+    function uid() { return `id_${Date.now()}_${Math.random().toString(16).slice(2)}`; }
+
+    function initializeUI() {
+        if (state.darkMode) document.body.classList.add('dark-mode');
+        updateDarkModeIcon();
+    }
+
+    function setupRouting() {
+        const activeCfg = getActiveCfg();
+        if (activeCfg && activeCfg.defaultModel) showMainApp();
+        else showSetupPage();
+        switchPage(state.currentPage);
+    }
+    function showSetupPage() {
+        document.getElementById('setup-page').classList.remove('hidden');
+        document.getElementById('app-container').classList.add('hidden');
+        renderSetupPage(); // 每次显示配置页面时重新渲染，确保数据最新
+    }
+    function showMainApp() {
+        document.getElementById('setup-page').classList.add('hidden');
+        document.getElementById('app-container').classList.remove('hidden');
+    }
+    function switchPage(pageId) {
+        document.querySelectorAll('#main-app .page-content').forEach(p => p.classList.add('hidden'));
+        document.getElementById(pageId)?.classList.remove('hidden');
+        document.querySelectorAll('#app-nav button').forEach(b => b.classList.toggle('active', b.dataset.page === pageId));
+        state.currentPage = pageId;
+        saveState();
+    }
+
+    function bindAllEvents() {
+        document.getElementById('btn-toggle-darkmode').addEventListener('click', toggleDarkMode);
+        document.getElementById('app-nav').addEventListener('click', e => e.target.tagName === 'BUTTON' && switchPage(e.target.dataset.page));
+        document.getElementById('btn-back-to-setup').addEventListener('click', showSetupPage);
+        document.getElementById('btn-history').addEventListener('click', openHistoryModal);
+        bindSetupEvents();
+        bindStoryboardEvents();
+        bindImagePromptEvents();
+        bindPromptModalEvents();
+        bindApiSwitcherModalEvents();
+        bindHistoryModalEvents();
+    }
+
+    function toggleDarkMode() {
+        document.body.classList.toggle('dark-mode');
+        state.darkMode = document.body.classList.contains('dark-mode');
+        saveState();
+        updateDarkModeIcon();
+    }
+    function updateDarkModeIcon() {
+        const icon = document.getElementById('btn-toggle-darkmode');
+        icon.innerHTML = state.darkMode 
+            ? '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>'
+            : '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>';
+    }
+
+    // ---------- 配置页面事件 ----------
+    function bindSetupEvents() {
+        const cfgSelect = document.getElementById('cfg-select');
+        const cfgName = document.getElementById('cfg-name');
+        const cfgBaseUrl = document.getElementById('cfg-baseurl');
+        const cfgApiKey = document.getElementById('cfg-apikey');
+        const cfgModel = document.getElementById('cfg-model');
+        const statusArea = document.getElementById('status-area');
+
+        cfgSelect.addEventListener('change', updateFormForSelectedCfg);
+
+        document.getElementById('btn-save-cfg').addEventListener('click', () => {
+            try {
+                const id = cfgSelect.value || uid();
+                const name = cfgName.value.trim();
+                const baseUrl = cfgBaseUrl.value.trim();
+                const apiKey = cfgApiKey.value.trim();
+                if (!name || !baseUrl || !apiKey) {
+                    statusArea.textContent = '错误：名称、URL和Key不能为空。';
+                    return;
+                }
+                let cfg = state.configs.find(c => c.id === id);
+                if (cfg) {
+                    if (cfg.baseUrl !== baseUrl || cfg.apiKey !== apiKey) {
+                        cfg.modelsCache = [];
+                        cfg.defaultModel = null;
+                    }
+                    Object.assign(cfg, { name, baseUrl, apiKey });
+                } else {
+                    cfg = { id, name, baseUrl, apiKey, modelsCache: [], defaultModel: null };
+                    state.configs.push(cfg);
+                }
+                state.activeCfgId = id;
+                saveState();
+                renderSetupPage(); // 重新渲染下拉框
+                statusArea.textContent = `配置 "${name}" 已保存。`;
+            } catch (e) {
+                statusArea.textContent = `保存失败: ${e.message}`;
+            }
+        });
+
+        document.getElementById('btn-fetch-models').addEventListener('click', async () => {
+            try {
+                const cfgData = {
+                    baseUrl: cfgBaseUrl.value.trim(),
+                    apiKey: cfgApiKey.value.trim()
+                };
+                if (!cfgData.baseUrl || !cfgData.apiKey) {
+                    statusArea.textContent = '请先填写 Base URL 和 API Key。';
+                    return;
+                }
+                statusArea.textContent = '正在加载模型...';
+                const { ids } = await fetchModels(cfgData);
+                const selectedCfgId = cfgSelect.value;
+                const cfg = selectedCfgId ? state.configs.find(c => c.id === selectedCfgId) : null;
+                if (cfg) {
+                    cfg.modelsCache = ids;
+                    cfg.defaultModel = cfg.defaultModel || ids[0] || null;
+                }
+                renderModelSelect(ids, (cfg ? cfg.defaultModel : null) || ids[0]);
+                statusArea.textContent = `成功加载 ${ids.length} 个模型。请保存配置以应用更改。`;
+            } catch (e) {
+                statusArea.textContent = `加载失败: ${e.message}`;
+            }
+        });
+
+        cfgModel.addEventListener('change', () => {
+            const activeCfg = state.configs.find(c => c.id === cfgSelect.value);
+            if (activeCfg) {
+                activeCfg.defaultModel = cfgModel.value;
+                updateContinueButton();
+            }
+        });
+
+        document.getElementById('btn-continue').addEventListener('click', showMainApp);
+    }
+
+    function renderSetupPage() {
+        const cfgSelect = document.getElementById('cfg-select');
+        cfgSelect.innerHTML = '<option value="">--- 新建配置 ---</option>';
+        state.configs.forEach(cfg => {
+            const opt = document.createElement('option');
+            opt.value = cfg.id;
+            opt.textContent = cfg.name;
+            if (cfg.id === state.activeCfgId) opt.selected = true;
+            cfgSelect.appendChild(opt);
+        });
+        updateFormForSelectedCfg();
+    }
+
+    function updateFormForSelectedCfg() {
+        const cfg = state.configs.find(c => c.id === document.getElementById('cfg-select').value);
+        document.getElementById('cfg-name').value = cfg ? cfg.name : '';
+        document.getElementById('cfg-baseurl').value = cfg ? cfg.baseUrl : '';
+        document.getElementById('cfg-apikey').value = cfg ? cfg.apiKey : '';
+        renderModelSelect(cfg ? cfg.modelsCache || [] : [], cfg ? cfg.defaultModel : null);
+        updateContinueButton();
+    }
+
+    function renderModelSelect(models, defaultModel) {
+        const cfgModel = document.getElementById('cfg-model');
+        cfgModel.innerHTML = models.length > 0 ? '' : '<option>请先加载模型</option>';
+        models.forEach(modelId => {
+            const opt = document.createElement('option');
+            opt.value = modelId;
+            opt.textContent = modelId;
+            if (modelId === defaultModel) opt.selected = true;
+            cfgModel.appendChild(opt);
+        });
+    }
+
+    function updateContinueButton() {
+        const btnContinue = document.getElementById('btn-continue');
+        const cfg = state.configs.find(c => c.id === document.getElementById('cfg-select').value);
+        const hasModel = document.getElementById('cfg-model').value;
+        if (cfg && hasModel) {
+            btnContinue.disabled = false;
+            btnContinue.textContent = `进入工作台 (使用: ${cfg.name})`;
+            state.activeCfgId = cfg.id;
+            cfg.defaultModel = hasModel;
+            saveState();
+        } else {
+            btnContinue.disabled = true;
+            btnContinue.textContent = '请配置API并选择模型';
+        }
+    }
+
+    // ---------- 分镜脚本生成页事件 ----------
+    function bindStoryboardEvents() {
+        const generateBtn = document.getElementById('btn-generate-storyboard');
+        const outputArea = document.getElementById('output-area-storyboard');
+
+        const styleBtns = document.getElementById('style-btns');
+        const customStyleInput = document.getElementById('custom-style-input');
+        styleBtns.addEventListener('click', (e) => {
+            if (e.target.tagName === 'BUTTON') {
+                styleBtns.querySelectorAll('button').forEach(btn => btn.classList.remove('active'));
+                e.target.classList.add('active');
+                if (e.target.dataset.value === '自定义') {
+                    customStyleInput.style.display = 'block';
+                } else {
+                    customStyleInput.style.display = 'none';
+                }
+            }
+        });
+
+        const shotCountInput = document.getElementById('shot-count');
+        const shotCountAutoBtn = document.getElementById('shot-count-auto');
+        shotCountAutoBtn.addEventListener('click', () => {
+            shotCountInput.disabled = !shotCountInput.disabled;
+            if (shotCountInput.disabled) {
+                shotCountInput.value = '';
+                shotCountAutoBtn.classList.add('active');
+            } else {
+                shotCountAutoBtn.classList.remove('active');
+            }
+        });
+        shotCountInput.addEventListener('focus', () => {
+            shotCountInput.disabled = false;
+            shotCountAutoBtn.classList.remove('active');
+        });
+        shotCountInput.addEventListener('blur', () => {
+            if (!shotCountInput.value) {
+                shotCountAutoBtn.classList.add('active');
+                shotCountInput.disabled = true;
+            }
+        });
+
+        generateBtn.addEventListener('click', async () => {
+            const activeCfg = getActiveCfg();
+            if (!activeCfg) { alert('API配置丢失，请返回配置页面。'); return showSetupPage(); }
+            const script = document.getElementById('script-input').value.trim();
+            const instruction = document.getElementById('instruction-input').value.trim();
+            if(!script || !instruction) return alert('剧本和核心指令不能为空。');
+
+            const aspectRatio = document.querySelector('#aspect-ratio-btns .active').dataset.value;
+            let style = document.querySelector('#style-btns .active').dataset.value;
+            if (style === '自定义') {
+                style = customStyleInput.value.trim() || '自定义';
+            }
+            const durationActive = document.querySelector('#duration-btns .active')?.dataset.value;
+            const duration = durationActive ? durationActive : (document.getElementById('custom-duration-input').value || '未知') + '秒';
+            let shotCount = '由AI自动适配';
+            if (!shotCountInput.disabled && shotCountInput.value) {
+                shotCount = shotCountInput.value;
+            }
+
+            const userPrompt = `
+### 任务要求
+${instruction}
+
+### 剧本原文
+${script}
+
+### 分镜参数
+- **画幅:** ${aspectRatio}
+- **风格:** ${style}
+- **成片预估时长:** ${duration}
+- **分镜数:** ${shotCount}
+
+### 输出格式要求
+请使用Markdown格式输出。每个分镜都必须包含以下字段，并严格按照此结构：
+
+## 镜头 01
+- **出场人物:** [根据原剧本解析出场人物，并全部罗列出来，例如：胡图图、张小丽]
+- **主要场景:** [根据原剧本解析主要场景，并全部罗列出来，例如：小区公园]
+- **景别:** [例如: 全景, 中景, 特写，详细参考核心指令]
+- **镜头与运镜:** [例如: 固定镜头, 从左向右推镜，详细参考核心指令]
+- **音效:** [环境音、特殊效果音，如无则填写"无"]
+- **时长:** [预估此镜头的秒数，例如: 2s]
+- **画面描述:** [用简单直白客观的语言进行描述，严格按照核心指令输出，结构采用景别+镜头运镜+描述画面内容、人物动作和表情+对白（无则不写）+环境细节]
+`;
+
+            outputArea.textContent = '正在生成中，请稍候...';
+            document.getElementById('generation-info-storyboard').textContent = '';
+            generateBtn.disabled = true;
+            const startTime = Date.now();
+            try {
+                const result = await callLLM(activeCfg, [{role: 'user', content: userPrompt}]);
+                const durationSec = ((Date.now() - startTime) / 1000).toFixed(2);
+                outputArea.textContent = result.content;
+                document.getElementById('generation-info-storyboard').textContent = `模型: ${activeCfg.defaultModel} | 耗时: ${durationSec}s | Tokens: ${result.usage?.total_tokens || '未知'}`;
+            } catch(e) { outputArea.textContent = `生成失败：\n\n${e.message}`; } finally { generateBtn.disabled = false; }
+        });
+
+        document.getElementById('btn-copy-storyboard').addEventListener('click', () => navigator.clipboard.writeText(outputArea.textContent));
+        document.getElementById('btn-download-storyboard').addEventListener('click', () => downloadFile('分镜脚本.txt', outputArea.textContent));
+        setupDragDrop('drop-zone-storyboard', 'script-input');
+        document.querySelectorAll('.toggle-buttons').forEach(g => {
+            if (g.id === 'style-btns') return;
+            g.addEventListener('click', e => {
+                if (e.target.tagName === 'BUTTON') {
+                    g.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+                    e.target.classList.add('active');
+                }
+            });
+        });
+    }
+
+    // ---------- 分镜图提示词页 ----------
+    function bindImagePromptEvents() {
+        const generateBtn = document.getElementById('btn-generate-prompts');
+        const originalScriptInput = document.getElementById('original-script-input');
+        const storyboardScriptInput = document.getElementById('storyboard-script-input');
+        const aspectRatioInput = document.getElementById('prompt-aspect-ratio');
+        const styleInput = document.getElementById('prompt-style');
+        const gridSizeBtns = document.getElementById('grid-size-btns');
+        const outputArea = document.getElementById('output-area-prompter');
+        const genInfoDiv = document.getElementById('generation-info-prompter');
+        const splitBtn = document.getElementById('btn-split-script');
+        const resetSplitBtn = document.getElementById('btn-reset-split');
+        const splitResultArea = document.getElementById('split-result-area');
+        const splitListDiv = document.getElementById('split-list');
+        const rangeStart = document.getElementById('range-start');
+        const rangeEnd = document.getElementById('range-end');
+
+        function extractJSON(text) {
+            const startIdx = text.search(/[{\[]/);
+            if (startIdx === -1) return null;
+            const stack = [];
+            let inString = false, escape = false, endIdx = -1;
+            for (let i = startIdx; i < text.length; i++) {
+                const char = text[i];
+                if (!inString) {
+                    if (char === '"') inString = true;
+                    else if (char === '{' || char === '[') stack.push(char);
+                    else if (char === '}' || char === ']') {
+                        if (stack.length === 0) break;
+                        const last = stack.pop();
+                        if ((char === '}' && last !== '{') || (char === ']' && last !== '[')) return null;
+                        if (stack.length === 0) { endIdx = i + 1; break; }
+                    }
+                } else {
+                    if (escape) escape = false;
+                    else if (char === '\\') escape = true;
+                    else if (char === '"') inString = false;
+                }
+            }
+            if (endIdx === -1) return null;
+            const jsonStr = text.substring(startIdx, endIdx);
+            try { return JSON.parse(jsonStr); } 
+            catch (e) {
+                let cleaned = jsonStr.replace(/'/g, '"').replace(/,\s*([}\]])/g, '$1')
+                                     .replace(/\/\/.*?(\n|$)/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
+                try { return JSON.parse(cleaned); } catch { return null; }
+            }
+        }
+
+        splitBtn.addEventListener('click', async () => {
+            const script = storyboardScriptInput.value.trim();
+            if (!script) return alert('请先输入分镜脚本。');
+            const activeCfg = getActiveCfg();
+            if (!activeCfg) { alert('API配置丢失，请返回配置页面。'); return showSetupPage(); }
+
+            const prompt = `你是一个分镜脚本拆分助手。请将以下分镜脚本拆分成独立的分镜，每个分镜以“## 镜头 XX”或类似标题开头。请返回一个 JSON 数组，数组每个元素是一个分镜的完整文本（包括标题和内容）。不要包含任何额外解释，仅返回 JSON 数组。
+
+脚本内容：
+${script}`;
+
+            splitBtn.textContent = '拆分中...';
+            splitBtn.disabled = true;
+            try {
+                const result = await callLLM(activeCfg, [{role: 'user', content: prompt}]);
+                const parsed = extractJSON(result.content);
+                if (!parsed) throw new Error("AI未返回有效的JSON格式。");
+                const shots = Array.isArray(parsed) ? parsed : (parsed.shots || []);
+                if (shots.length === 0) throw new Error("未提取到任何分镜。");
+                splitShots = shots;
+                renderSplitList(shots);
+                splitResultArea.style.display = 'block';
+                resetSplitBtn.style.display = 'inline-block';
+                rangeEnd.max = shots.length;
+                rangeEnd.value = shots.length;
+                rangeStart.max = shots.length;
+                rangeStart.value = 1;
+            } catch (e) {
+                alert(`拆分失败: ${e.message}`);
+                console.error(e);
+            } finally {
+                splitBtn.textContent = '🔍 拆分分镜脚本';
+                splitBtn.disabled = false;
+            }
+        });
+
+        resetSplitBtn.addEventListener('click', () => {
+            splitShots = [];
+            splitResultArea.style.display = 'none';
+            splitListDiv.innerHTML = '';
+            resetSplitBtn.style.display = 'none';
+            rangeStart.value = 1;
+            rangeEnd.value = 1;
+        });
+
+        function renderSplitList(shots) {
+            splitListDiv.innerHTML = '';
+            shots.forEach((shotText, idx) => {
+                const shotDiv = document.createElement('div');
+                shotDiv.style.display = 'flex';
+                shotDiv.style.gap = '8px';
+                shotDiv.style.alignItems = 'flex-start';
+                shotDiv.innerHTML = `
+                    <span style="min-width: 60px; font-weight:500;">镜头 ${idx+1}</span>
+                    <textarea rows="2" style="flex-grow:1; font-size:0.85rem;" data-index="${idx}">${shotText.replace(/"/g, '&quot;')}</textarea>
+                `;
+                const textarea = shotDiv.querySelector('textarea');
+                textarea.addEventListener('input', (e) => {
+                    splitShots[e.target.dataset.index] = e.target.value;
+                });
+                splitListDiv.appendChild(shotDiv);
+            });
+        }
+
+        generateBtn.addEventListener('click', async () => {
+            const originalScript = originalScriptInput.value.trim();
+            const aspectRatio = aspectRatioInput.value.trim();
+            const style = styleInput.value.trim();
+            const gridSize = document.querySelector('#grid-size-btns .active').dataset.value;
+            const gridCount = gridSize === '2X2四宫格' ? 4 : 9;
+
+            if (!originalScript || !aspectRatio || !style) {
+                return alert('请填写原剧本、画幅比例和风格。');
+            }
+            if (splitShots.length === 0) {
+                return alert('请先点击“拆分分镜脚本”按钮，拆分后再选择范围生成。');
+            }
+
+            const start = parseInt(rangeStart.value) || 1;
+            const end = parseInt(rangeEnd.value) || splitShots.length;
+            if (start < 1 || end > splitShots.length || start > end) {
+                alert(`生成范围错误，请重新填写！（有效范围 1-${splitShots.length}）`);
+                return;
+            }
+
+            const selectedShots = splitShots.slice(start-1, end).map((shot, idx) => `镜头 ${start+idx}：\n${shot}`).join('\n\n');
+
+            const prompt = `现在你是著名的分镜图AI提示词大师。请根据提供的原剧本和分镜脚本，为以下指定的分镜（从镜头${start}到镜头${end}）生成对应的 ${gridSize} 分镜头组的提示词。每个分镜的提示词必须严格遵循以下格式：
+
+分镜X：
+【前置必须】生成一组 ${gridSize} 分镜头组，确保每个镜头都保持 ${aspectRatio} 的画幅比例，不要出现对话框和文字，不要出现字幕，不要显示镜头号，不要显示文字备注，不要气泡框，仅输出结果。
+${style} 风格，涵盖不同景别以及角度，画面精细。
+1. [第一个镜头的描述]
+2. [第二个镜头的描述]
+3. [第三个镜头的描述]
+4. [第四个镜头的描述]
+${gridCount === 9 ? '5. [第五个镜头的描述]\n6. [第六个镜头的描述]\n7. [第七个镜头的描述]\n8. [第八个镜头的描述]\n9. [第九个镜头的描述]' : ''}
+
+（每个分镜的提示词组之间用空行分隔，最终输出指定范围内所有分镜的提示词。）
+
+请根据原剧本的剧情和分镜脚本中的镜头描述，为每个分镜设计 ${gridCount} 个连贯的镜头画面，描述要简短、精炼、充满视觉冲击力，使用中文。
+
+输入信息：
+画幅比例: ${aspectRatio}
+风格: ${style}
+
+### 原剧本
+${originalScript}
+
+### 需要生成的分镜（从镜头${start}到镜头${end}）
+${selectedShots}
+
+请开始生成，严格按照上述格式输出。`;
+
+            outputArea.textContent = '正在生成提示词...';
+            genInfoDiv.textContent = '';
+            generateBtn.disabled = true;
+            const startTime = Date.now();
+            try {
+                const result = await callLLM(getActiveCfg(), [{role: 'user', content: prompt}]);
+                const durationSec = ((Date.now() - startTime) / 1000).toFixed(2);
+                outputArea.textContent = result.content;
+                const modelName = getActiveCfg().defaultModel;
+                const tokenInfo = result.usage?.total_tokens || '未知';
+                genInfoDiv.textContent = `模型: ${modelName} | 耗时: ${durationSec}s | Tokens: ${tokenInfo}`;
+
+                addHistoryRecord({
+                    timestamp: new Date().toLocaleString(),
+                    originalScript,
+                    storyboardScript: storyboardScriptInput.value.trim(),
+                    aspectRatio, style, gridSize,
+                    range: `${start}-${end}`,
+                    output: result.content,
+                    model: modelName,
+                    duration: durationSec,
+                    tokens: tokenInfo
+                });
+            } catch (e) {
+                outputArea.textContent = `生成失败：\n${e.message}`;
+            } finally {
+                generateBtn.disabled = false;
+            }
+        });
+
+        document.getElementById('btn-copy-prompts').addEventListener('click', () => {
+            navigator.clipboard.writeText(outputArea.textContent);
+        });
+        document.getElementById('btn-download-prompts').addEventListener('click', () => {
+            downloadFile('分镜图提示词.txt', outputArea.textContent);
+        });
+        setupDragDrop('drop-zone-original', 'original-script-input');
+        setupDragDrop('drop-zone-storyboard-script', 'storyboard-script-input');
+        gridSizeBtns.addEventListener('click', (e) => {
+            if (e.target.tagName === 'BUTTON') {
+                gridSizeBtns.querySelectorAll('button').forEach(btn => btn.classList.remove('active'));
+                e.target.classList.add('active');
+            }
+        });
+    }
+
+    // ---------- 历史记录模态框 ----------
+    function openHistoryModal() {
+        renderHistoryList();
+        document.getElementById('history-modal').style.display = 'flex';
+    }
+
+    function bindHistoryModalEvents() {
+        const modal = document.getElementById('history-modal');
+        const closeBtn = document.getElementById('btn-close-history-modal');
+        closeBtn.addEventListener('click', () => modal.style.display = 'none');
+        modal.addEventListener('click', e => { if (e.target === modal) modal.style.display = 'none'; });
+    }
+
+    function renderHistoryList() {
+        const list = document.getElementById('history-list');
+        list.innerHTML = '';
+        if (history.length === 0) {
+            list.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-muted);">暂无历史记录</div>';
+            return;
+        }
+        history.forEach((rec, idx) => {
+            const item = document.createElement('li'); item.className = 'modal-item';
+            item.innerHTML = `
+                <div style="display:flex; flex-direction:column; gap:4px; flex-grow:1;">
+                    <span class="name">${rec.timestamp} | ${rec.range} | ${rec.model}</span>
+                    <span class="details" style="font-size:0.8rem;">风格: ${rec.style} | 画幅: ${rec.aspectRatio}</span>
+                </div>
+                <div>
+                    <button class="secondary mini btn-view-history" data-index="${idx}">查看</button>
+                    <button class="secondary mini btn-copy-history" data-index="${idx}">复制</button>
+                    <button class="secondary mini btn-download-history" data-index="${idx}">下载</button>
+                </div>
+            `;
+            list.appendChild(item);
+        });
+
+        list.querySelectorAll('.btn-view-history').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const idx = e.target.dataset.index;
+                const rec = history[idx];
+                alert('预览（前200字符）：\n\n' + rec.output.substring(0,200) + '...');
+            });
+        });
+        list.querySelectorAll('.btn-copy-history').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const idx = e.target.dataset.index;
+                navigator.clipboard.writeText(history[idx].output);
+                alert('已复制到剪贴板');
+            });
+        });
+        list.querySelectorAll('.btn-download-history').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const idx = e.target.dataset.index;
+                const rec = history[idx];
+                downloadFile(`分镜图提示词_${rec.timestamp}.txt`, rec.output);
+            });
+        });
+    }
+
+    // ---------- API 切换模态框 ----------
+    function bindApiSwitcherModalEvents() {
+        const modal = document.getElementById('api-switcher-modal');
+        const list = document.getElementById('api-list');
+        const open = () => {
+            renderApiList();
+            modal.style.display = 'flex';
+        };
+        const close = () => modal.style.display = 'none';
+        document.getElementById('btn-switch-api').addEventListener('click', open);
+        document.getElementById('btn-close-api-modal').addEventListener('click', close);
+        modal.addEventListener('click', e => { if (e.target === modal) close(); });
+
+        function renderApiList() {
+            list.innerHTML = '';
+            if (state.configs.length === 0) {
+                list.innerHTML = '<li style="padding:20px; text-align:center;">暂无已保存的配置</li>';
+                return;
+            }
+            state.configs.forEach(cfg => {
+                const item = document.createElement('li'); item.className = 'modal-item';
+                item.innerHTML = `<div style="display:flex; flex-direction:column; gap:4px;"><span class="name">${cfg.name}</span><span class="details">${cfg.defaultModel || '未设置模型'}</span></div>`;
+                if (cfg.id === state.activeCfgId) item.style.background = 'var(--brand-light)';
+                item.addEventListener('click', () => {
+                    state.activeCfgId = cfg.id;
+                    saveState();
+                    close();
+                    alert(`已切换到 API: ${cfg.name}`);
+                    // 可选：更新主界面状态
+                });
+                list.appendChild(item);
+            });
+        }
+    }
+
+    // ---------- 指令模板库 ----------
+    function bindPromptModalEvents() {
+        const modal = document.getElementById('prompt-modal');
+        const list = document.getElementById('prompt-list');
+        const open = () => { modal.style.display = 'flex'; renderList(); };
+        const close = () => modal.style.display = 'none';
+        document.getElementById('btn-manage-prompts').addEventListener('click', open);
+        document.getElementById('btn-close-prompt-modal').addEventListener('click', close);
+        modal.addEventListener('click', e => { if (e.target === modal) close(); });
+
+        function renderList() {
+            list.innerHTML = '';
+            state.prompts.forEach(p => {
+                const item = document.createElement('li'); item.className = 'modal-item';
+                item.innerHTML = `<span class="name">${p.name}</span><div><button class="secondary mini btn-use" data-id="${p.id}">使用</button><button class="mini btn-delete" style="background:#fee2e2;color:#b91c1c;margin-left:8px;" data-id="${p.id}">删除</button></div>`;
+                list.appendChild(item);
+            });
+        }
+        list.addEventListener('click', e => {
+            const id = e.target.dataset.id;
+            if (!id) return;
+            if (e.target.classList.contains('btn-use')) {
+                const prompt = state.prompts.find(p => p.id === id);
+                if (prompt) document.getElementById('instruction-input').value = prompt.content;
+                close();
+            } else if (e.target.classList.contains('btn-delete')) {
+                state.prompts = state.prompts.filter(p => p.id !== id);
+                saveState();
+                renderList();
+            }
+        });
+        document.getElementById('btn-save-prompt').addEventListener('click', () => {
+            const name = document.getElementById('new-prompt-name').value.trim();
+            const content = document.getElementById('new-prompt-content').value.trim();
+            if (!name || !content) return;
+            state.prompts.push({ id: uid(), name, content });
+            saveState();
+            renderList();
+            document.getElementById('new-prompt-name').value = '';
+            document.getElementById('new-prompt-content').value = '';
+        });
+    }
+
+    // ---------- 工具函数 ----------
+    function downloadFile(filename, text) {
+        const el = document.createElement('a');
+        el.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+        el.setAttribute('download', filename);
+        el.style.display = 'none';
+        document.body.appendChild(el);
+        el.click();
+        document.body.removeChild(el);
+    }
+
+    function setupDragDrop(zoneId, inputId) {
+        const z = document.getElementById(zoneId);
+        const i = document.getElementById(inputId);
+        z.addEventListener('dragover', e => { e.preventDefault(); z.classList.add('dragover'); });
+        z.addEventListener('dragleave', () => z.classList.remove('dragover'));
+        z.addEventListener('drop', e => {
+            e.preventDefault();
+            z.classList.remove('dragover');
+            if (e.dataTransfer.files[0]) {
+                const reader = new FileReader();
+                reader.onload = e => i.value = e.target.result;
+                reader.readAsText(e.dataTransfer.files[0]);
+            }
+        });
+    }
+
+    async function fetchModels(cfg) {
+        const url = `${(cfg.baseUrl || "").trim().replace(/\/+$/, "")}/models`;
+        const headers = { "Authorization": "Bearer " + (cfg.apiKey || "") };
+        const resp = await fetch(url, { method: "GET", headers });
+        const text = await resp.text();
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${text.slice(0, 200)}`);
+        const data = JSON.parse(text);
+        const ids = (Array.isArray(data.data) ? data.data : (Array.isArray(data) ? data : [])).map(x => x?.id).filter(Boolean);
+        if (ids.length === 0) throw new Error("模型列表为空");
+        return { ids: Array.from(new Set(ids)).sort() };
+    }
+
+    async function callLLM(cfg, messages) {
+        const url = `${cfg.baseUrl}/chat/completions`;
+        const headers = { "Content-Type": "application/json", "Authorization": "Bearer " + cfg.apiKey };
+        const body = JSON.stringify({ model: cfg.defaultModel, messages, temperature: 0.7 });
+        const resp = await fetch(url, { method: "POST", headers, body });
+        const text = await resp.text();
+        if (!resp.ok) throw new Error(`API错误 ${resp.status}: ${text.slice(0, 500)}`);
+        const data = JSON.parse(text);
+        const content = data?.choices?.[0]?.message?.content;
+        if (typeof content !== 'string') throw new Error("API返回格式不正确。");
+        return { content, usage: data.usage };
+    }
+  </script>
+</body>
+</html>
