@@ -38,6 +38,8 @@
     .tab { padding: 8px 16px; border: none; background: transparent; color: var(--text-secondary); font-size: 1rem; border-radius: 8px; cursor: pointer; transition: var(--transition); }
     .tab:hover { background: var(--accent-light); color: var(--accent); }
     .tab.active { color: var(--accent); font-weight: 600; }
+    /* REMOVED GRID DISPLAY FOR GENERIC .options - IT WILL NOW BE FLEX FOR BETTER PC LAYOUT */
+    .options { display: flex; flex-wrap: wrap; gap: 12px; justify-content: flex-start; align-items: flex-start; }
     .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
     .field { margin-bottom: 16px; }
     .field label { display: block; font-weight: 500; margin-bottom: 8px; font-size: 0.9rem; color: var(--text-secondary); }
@@ -61,7 +63,7 @@
     button:disabled { opacity: 0.5; cursor: not-allowed; }
     .status, .hint { margin-top: 16px; font-size: 0.9rem; color: var(--text-muted); }
     .novel-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
-    .novel-card { background: var(--bg-panel); border-radius: var(--radius); padding: 20px; border: 1px solid var(--border-color); transition: var(--transition); cursor: pointer; }
+    .novel-card { background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: var(--radius); padding: 20px; transition: var(--transition); cursor: pointer; }
     .novel-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); }
     .novel-card h3 { margin: 0 0 8px 0; }
     .novel-card-meta { font-size: 0.85rem; color: var(--text-muted); }
@@ -85,7 +87,9 @@
     #writerChapterTitle[contenteditable="false"] { border-bottom: 1px solid var(--border-color); cursor: default; }
 
     #genMeta { color: var(--text-muted); font-size: 0.8rem; padding: 10px; background: var(--bg-main); border-radius: 8px; white-space: pre-wrap; margin-bottom: 24px; }
-    .options { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    /* Removed .options grid display here to avoid conflict with #nextOptions, which is now a plain div */
+    /* .options { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; } */
+
     /* Original rewriteContainer is hidden, new structure for rewrite panel */
     /* #rewriteContainer { padding: 20px; border: 1px dashed var(--accent); border-radius: var(--radius); margin-top: 24px; background-color: var(--accent-light); }
     .dark-mode #rewriteContainer { background-color: transparent; } */
@@ -333,13 +337,16 @@
 
       .tab { padding: 8px 14px; font-size: 1rem; min-height: 44px; flex-shrink: 0; } /* Ensure tabs don't shrink */
       .grid2 { grid-template-columns: 1fr; gap: 20px; }
+      /* For .options on mobile, revert to single column grid if needed, or keep flex-wrap */
+      /* Since #nextOptions no longer has .options, this won't apply to it. */
+      /* If other .options elements still need single column on mobile, add it here */
       .field { margin-bottom: 24px; }
       .field label { font-size: 1rem; margin-bottom: 10px; }
       input, select, textarea { padding: 14px 18px; font-size: 1rem; min-height: 52px; }
       button { padding: 14px 20px; font-size: 1rem; min-height: 52px; }
       .row { gap: 16px; margin-top: 24px; } /* Generic row margin, overridden by more specific classes */
       .row button { width: auto; flex: 1 1 0; }
-      .options { grid-template-columns: 1fr; gap: 16px; }
+      .options { grid-template-columns: 1fr; gap: 16px; } /* This applies to .options within panel, not necessarily all .options */
 
       /* Mobile specific adjustments for writer section spacing */
       .writer-actions-row {
@@ -357,6 +364,18 @@
       .writer-buttons-group button {
         flex: 1 1 0; /* Distribute space evenly among buttons */
       }
+      /* Ensure the writer-buttons-group in continueContainer does not over-stretch buttons too much on mobile */
+      #continueContainer .writer-buttons-group {
+          justify-content: center; /* Center the buttons */
+          gap: 15px; /* Slightly larger gap for clarity */
+          padding: 0 10px; /* Some padding */
+      }
+      #continueContainer .writer-buttons-group button {
+          flex: none; /* Do not force equal width */
+          width: auto; /* Auto width */
+          min-width: 120px; /* Minimum width */
+      }
+
 
       .chapter-nav {
         gap: 16px; /* Keep existing gap or adjust */
@@ -401,6 +420,32 @@
       }
       .inspiration-records-actions button:first-child {
         margin-top: 0; /* No top margin for first button */
+      }
+
+      /* Style for suggestion groups */
+      .suggestion-group {
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 10px;
+        margin-bottom: 10px;
+        background-color: var(--bg-main);
+      }
+      .suggestion-group-header {
+        font-weight: bold;
+        color: var(--text-primary);
+        margin-bottom: 5px;
+      }
+      .suggestion-group .options {
+        display: flex; /* Changed to flex for better wrapping of suggestions */
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 5px;
+      }
+      .suggestion-group .options button {
+          flex: 1 1 auto; /* Allow buttons to grow/shrink but not too small */
+          min-width: 100px;
+          padding: 8px 12px;
+          font-size: 0.9rem;
       }
 
     }
@@ -622,22 +667,20 @@
         </div>
         <div id="continueContainer" class="hidden">
             <hr />
-            <h3>后续章节创作</h3>
+            <h3 style="margin-top: 25px;">后续章节创作</h3> <!-- Adjusted margin here -->
+            <!-- Re-added nextPlot input box -->
             <div class="field">
                 <label for="nextPlot">下一章剧情走向 (可选)</label>
                 <textarea id="nextPlot" rows="3" placeholder="填写后点击“继续扩写”。"></textarea>
             </div>
-            <h4>AI 给出的后续方向</h4>
-            <div id="nextOptions" class="options"></div>
-            <div class="field">
-                <label for="customNextPlotModifier">基于AI建议，修改或添加你的剧情想法 (可选)：</label> <!-- New input for modifying suggestions -->
-                <textarea id="customNextPlotModifier" rows="2" placeholder="例如：让主角在这里遇到一个老朋友，而不是新的敌人。"></textarea>
+            <h4 style="margin-top: 20px;">AI 给出的后续方向</h4> <!-- Adjusted margin here -->
+            <div id="nextOptions">
+                <!-- AI suggestions will be dynamically added here -->
             </div>
-            <div class="row">
+            <div class="writer-buttons-group" style="margin-top: 20px;"> <!-- Adjusted margin here -->
                 <button id="btnRerollSuggestions" class="secondary">🔄 重掷建议</button> <!-- New button -->
-                <button id="btnApplyModifiedSuggestion" class="primary">✒️ 基于此修改并扩写</button> <!-- New button -->
+                <button id="btnClearSuggestions" class="secondary">清空建议</button> <!-- New clear button -->
                 <button id="btnNext" class="primary">继续扩写下一章</button>
-                <button id="btnStopGeneration" class="secondary" style="display:none;">⏹️ 停止生成</button>
                 <button id="btnBackToSetup" class="secondary">返回修改设定</button>
             </div>
         </div>
@@ -749,7 +792,12 @@
   </dialog>
 
   <!-- 阅读 Dialog -->
-  <dialog id="readChapterDialog"><h2 id="readChapterTitle"></h2><button id="closeReadChapter" class="dialog-close-btn">&times;</button><div class="dialog-content"><pre id="readChapterContent"></pre></div></dialog>
+  <dialog id="readChapterDialog"><h2 id="readChapterTitle"></h2><button id="closeReadChapter" class="dialog-close-btn">&times;</button><div class="dialog-content"><pre id="readChapterContent"></pre>
+    <div id="readChapterSuggestions" style="margin-top: 20px; padding-top: 15px; border-top: 1px dashed var(--border-color);">
+        <h4>AI 给出的后续发展建议 (仅供参考)</h4>
+        <div id="readChapterNextOptions" class="options"></div>
+    </div>
+  </div></dialog>
 
   <!-- 下载 Dialog -->
   <dialog id="downloadDialog">
@@ -1040,10 +1088,28 @@
               ${s.characters ? `<p><strong>角色：：</strong><br>${s.characters.replace(/\n/g, '<br>')}</p>` : ''}
               ${s.world ? `<p><strong>世界观：：</strong><br>${s.world.replace(/\n/g, '<br>')}</p>` : ''}
               ${styleNote}
-              <p><strong>大纲：</strong><br>${s.outline.replace(/\n/g, '<br>')}</p>
+              <p><strong>大纲：：</strong><br>${s.outline.replace(/\n/g, '<br>')}</p>
           `;
-          el('reviewContent').classList.remove('hidden');
+          // Fix for "本书设定回顾" collapse:
+          el('reviewContent').classList.remove('hidden'); // Ensure it's initially visible
           el('btnCollapseReview').textContent = '折叠';
+      }
+
+      // Fix: Collapse button for "本书设定回顾"
+      const settingsReviewPanel = el('settingsReviewPanel');
+      const reviewHeader = el('reviewHeader');
+      const reviewContent = el('reviewContent');
+      const btnCollapseReview = el('btnCollapseReview');
+
+      if (reviewHeader && reviewContent && btnCollapseReview) {
+          reviewHeader.onclick = (e) => {
+              // Prevent button click from bubbling to header, if btnCollapseReview is clicked directly
+              if (e.target === btnCollapseReview || btnCollapseReview.contains(e.target)) {
+                  e.stopPropagation(); 
+              }
+              reviewContent.classList.toggle('hidden');
+              btnCollapseReview.textContent = reviewContent.classList.contains('hidden') ? '展开' : '折叠';
+          };
       }
 
       // Rewrite Panel Collapse
@@ -1182,7 +1248,51 @@
           el('bookDetailDialog').showModal();
       }
       el('closeBookDetail').onclick = () => el('bookDetailDialog').close();
-      function openReadChapter(chapter) { el('readChapterTitle').textContent = chapter.title; el('readChapterContent').textContent = chapter.text; el('readChapterDialog').showModal(); }
+      
+      // Modified openReadChapter to show suggestions
+      function openReadChapter(chapter) { 
+        el('readChapterTitle').textContent = chapter.title; 
+        el('readChapterContent').textContent = chapter.text; 
+        const suggestionsContainer = el('readChapterNextOptions');
+        suggestionsContainer.innerHTML = ''; // Clear previous suggestions
+        if (chapter.nextOptions && chapter.nextOptions.length > 0) { // Check chapter.nextOptions as this was the original direct property
+            el('readChapterSuggestions').style.display = 'block';
+            // Display suggestions from the chapter's direct nextOptions property if available
+            chapter.nextOptions.forEach(opt => {
+                const b = document.createElement('button');
+                b.className = 'secondary';
+                b.textContent = opt;
+                b.disabled = true; // Make suggestions read-only in read view
+                suggestionsContainer.appendChild(b);
+            });
+        } else if (chapter.allSuggestions && chapter.allSuggestions.length > 0) { // Also check allSuggestions if nextOptions is empty
+            el('readChapterSuggestions').style.display = 'block';
+            chapter.allSuggestions.forEach((group, groupIdx) => {
+                const groupDiv = document.createElement('div');
+                groupDiv.className = 'suggestion-group'; // Use same styling as writer view
+                const groupHeader = document.createElement('div');
+                groupHeader.className = 'suggestion-group-header';
+                groupHeader.textContent = `建议组 ${groupIdx + 1} (${new Date(group.timestamp).toLocaleTimeString()})`;
+                groupDiv.appendChild(groupHeader);
+
+                const optionsDiv = document.createElement('div');
+                optionsDiv.className = 'options'; // Use the class for internal layout
+                group.suggestions.forEach(opt => {
+                    const b = document.createElement('button');
+                    b.className = 'secondary';
+                    b.textContent = opt;
+                    b.disabled = true; // Make suggestions read-only in read view
+                    optionsDiv.appendChild(b);
+                });
+                groupDiv.appendChild(optionsDiv);
+                suggestionsContainer.appendChild(groupDiv);
+            });
+        }
+        else {
+            el('readChapterSuggestions').style.display = 'none';
+        }
+        el('readChapterDialog').showModal(); 
+      }
       el('closeReadChapter').onclick = () => el('readChapterDialog').close();
       document.getElementById('closeSummaryView')?.addEventListener('click', () => document.getElementById('summaryViewDialog')?.close());
 
@@ -1405,9 +1515,26 @@
           const outline = el("novelOutline").value.trim();
           const statusEl = el("setupMeta");
           if (!outline) { statusEl.textContent = "请先填写大纲。"; return; }
+          
+          // Capture other relevant settings
+          const novelTitle = el('novelTitle').value.trim();
+          const novelGenre = el('novelGenre').value.trim();
+          const novelStyle = el('novelStyle').value.trim();
+          const novelCharacters = el('novelCharacters').value.trim();
+          const novelWorld = el('novelWorld').value.trim();
+
           await pushOutlineHistory(outline);
-          const userPrompt = `请将以下用户草稿大纲，完善成一个结构更清晰、冲突更明确、包含起承转合的详细大纲，并给出前3章的章节要点。只输出大纲文本。\n\n用户草稿大纲：\n${outline}`;
-          const messages = [ { role: "system", content: "你是一位资深小说编辑..." }, { role: "user", content: userPrompt } ];
+
+          let userPrompt = `请将以下用户草稿大纲，完善成一个结构更清晰、冲突更明确、包含起承转合的详细大纲，并给出前3章的章节要点。只输出大纲文本。\n\n`;
+          userPrompt += `当前小说设定参考：\n`;
+          if (novelTitle) userPrompt += `小说书名: ${novelTitle}\n`;
+          if (novelGenre) userPrompt += `小说类型/题材: ${novelGenre}\n`;
+          if (novelStyle) userPrompt += `目标读者与风格: ${novelStyle}\n`;
+          if (novelCharacters) userPrompt += `主要角色表:\n${novelCharacters}\n`;
+          if (novelWorld) userPrompt += `世界观设定:\n${novelWorld}\n`;
+          userPrompt += `\n用户草稿大纲：\n${outline}`;
+
+          const messages = [ { role: "system", content: "你是一位资深小说编辑，擅长完善和优化小说大纲。" }, { role: "user", content: userPrompt } ];
           const cfg = getActiveCfg();
           const model = getActiveModelId();
           if (!cfg || !model) { statusEl.textContent = "请选择API线路和模型。"; return; }
@@ -1510,14 +1637,11 @@
           if (currentAbortController) {
               currentAbortController.abort();
               isGenerating = false;
-              const btnStop = el('btnStopGeneration');
-              if (btnStop) btnStop.style.display = 'none';
               const metaEl = document.querySelector('#viewWriter .meta, #genMeta');
               if (metaEl) metaEl.textContent = '生成已中止';
               generationStage = '中止';
           }
       }
-      el('btnStopGeneration')?.addEventListener('click', stopGeneration);
 
       // Core Writing Flow
       async function renderWriterView() {
@@ -1534,16 +1658,61 @@
           btnCollapseRewrite.textContent = '折叠'; 
 
           const isLast = currentChapterIndex === currentBook.chapters.length - 1;
-          el('continueContainer').classList.toggle('hidden', !isLast);
+          el('continueContainer').classList.toggle('hidden', !isLast); // Only show continue/reroll for last chapter
+          
+          // Render next options only if current chapter is the last one
+          const optsContainer = el('nextOptions');
+          optsContainer.innerHTML = ''; // Clear previous reroll groups
+          if (isLast && ch.allSuggestions && ch.allSuggestions.length > 0) {
+              ch.allSuggestions.reverse().forEach((group, groupIdx) => { // Show most recent group first
+                  const groupDiv = document.createElement('div');
+                  groupDiv.className = 'suggestion-group';
+                  const groupHeader = document.createElement('div');
+                  groupHeader.className = 'suggestion-group-header';
+                  groupHeader.textContent = `建议组 ${ch.allSuggestions.length - groupIdx} (${new Date(group.timestamp).toLocaleTimeString()})`;
+                  groupDiv.appendChild(groupHeader);
+
+                  const optionsDiv = document.createElement('div');
+                  optionsDiv.className = 'options';
+                  group.suggestions.forEach(opt => {
+                      const b = document.createElement('button');
+                      b.className = 'secondary';
+                      b.textContent = opt;
+                      b.onclick = () => el('nextPlot').value = opt; // Fill the nextPlot textarea
+                      optionsDiv.appendChild(b);
+                  });
+                  groupDiv.appendChild(optionsDiv);
+                  optsContainer.appendChild(groupDiv);
+              });
+          }
+          // Also show initial nextOptions if available and no allSuggestions yet (backward compatibility)
+          else if (isLast && ch.nextOptions && ch.nextOptions.length > 0) {
+            const groupDiv = document.createElement('div');
+            groupDiv.className = 'suggestion-group';
+            const groupHeader = document.createElement('div');
+            groupHeader.className = 'suggestion-group-header';
+            groupHeader.textContent = `初始建议 (${new Date().toLocaleTimeString()})`;
+            groupDiv.appendChild(groupHeader);
+
+            const optionsDiv = document.createElement('div');
+            optionsDiv.className = 'options';
+            ch.nextOptions.forEach(opt => {
+                const b = document.createElement('button');
+                b.className = 'secondary';
+                b.textContent = opt;
+                b.onclick = () => el('nextPlot').value = opt;
+                optionsDiv.appendChild(b);
+            });
+            groupDiv.appendChild(optionsDiv);
+            optsContainer.appendChild(groupDiv);
+          }
+
+
           await renderSettingsReview();
           await updateTotalWordCount();
           await renderChapterJumpList();
           el('chapterJumpSelect').value = currentChapterIndex;
 
-          if (isLast) {
-              const opts = el('nextOptions'); opts.innerHTML = '';
-              (ch.nextOptions || []).forEach(opt => { const b = document.createElement('button'); b.className = 'secondary'; b.textContent = opt; b.onclick = () => el('nextPlot').value = opt; opts.appendChild(b); });
-          }
           updateWriterApiInfo(); // Update API info display
       }
       el('btnPrevChapter').onclick = async () => { if (currentChapterIndex > 0) { if (isGenerating) stopGeneration(); currentChapterIndex--; await renderWriterView(); } };
@@ -1718,8 +1887,6 @@ ${buildChapterSystemPrompt()}`;
           let fullContent = '';
           const startTime = Date.now();
           
-          const btnStop = el('btnStopGeneration');
-          if (btnStop) btnStop.style.display = 'inline-flex';
           setButtonLoading(btn, true, isFirstChapter ? '开始创作...' : (isRewrite ? '重写中...' : '继续扩写...'));
           metaEl.textContent = '流式生成中...';
           generationStage = '请求中';
@@ -1741,19 +1908,25 @@ ${buildChapterSystemPrompt()}`;
               const titleMatch = mainContent.match(/###\s*(.*)/), title = titleMatch ? titleMatch[1].trim() : `第 ${chapterIndexToGenerate} 章`;
               const text = mainContent.replace(/###.*/, '').trim();
               const metaText = `模型: ${model} | 耗时: ${latency}ms | 字数: ${text.length}`;
+              
               const newChapter = { id: crypto.randomUUID(), index: chapterIndexToGenerate, title, text, meta: metaText, nextOptions };
               
               currentBook.chapters.push(newChapter);
               currentChapterIndex = currentBook.chapters.length - 1;
+
+              // Store the newly generated suggestions in allSuggestions
+              // This is where original `nextOptions` is moved to `allSuggestions`
+              currentBook.chapters[currentChapterIndex].allSuggestions = [{ suggestions: nextOptions, timestamp: Date.now() }];
+              // Clear the direct nextOptions property as allSuggestions will be used for rendering
+              delete currentBook.chapters[currentChapterIndex].nextOptions;
+              
               await saveCurrentBook();
               await renderWriterView();
-              if (!isRewrite) {
-                  const nextPlotEl = el('nextPlot');
-                  if (nextPlotEl) nextPlotEl.value = '';
-                  el('customNextPlotModifier').value = ''; 
-              } else {
-                  el('rewritePlot').value = ''; 
-              }
+              
+              // Clear nextPlot input after successful generation
+              const nextPlotEl = el('nextPlot');
+              if (nextPlotEl) nextPlotEl.value = '';
+
               if (isFirstChapter) setView("writer");
               metaEl.textContent = metaText;
               generationStage = '完成';
@@ -1778,15 +1951,18 @@ ${buildChapterSystemPrompt()}`;
               generationStage = '失败';
           } finally {
               setButtonLoading(btn, false);
-              if (btnStop) btnStop.style.display = 'none';
               isGenerating = false;
           }
       }
 
-      // Reroll Suggestions Function
+      // Reroll Suggestions Function (Modified to append)
       el('btnRerollSuggestions').onclick = async () => {
           if (isGenerating || !currentBook || currentChapterIndex === -1) {
               alert('请等待当前任务完成或先有章节。');
+              return;
+          }
+          if (currentChapterIndex !== currentBook.chapters.length - 1) {
+              alert('只能为最新章节重掷后续发展建议。');
               return;
           }
 
@@ -1806,7 +1982,20 @@ ${buildChapterSystemPrompt()}`;
           try {
               const currentChapter = currentBook.chapters[currentChapterIndex];
               const settingsReviewText = el('reviewContent').innerText.trim();
-              const existingSuggestions = Array.from(el('nextOptions').children).map(b => b.textContent).join('\n- ');
+              
+              // Gather all existing suggestions to inform the AI not to repeat them
+              let allExistingSuggestions = [];
+              if (currentChapter.allSuggestions) {
+                  currentChapter.allSuggestions.forEach(group => {
+                      allExistingSuggestions = allExistingSuggestions.concat(group.suggestions);
+                  });
+              }
+              // Also include legacy nextOptions if it exists
+              if (currentChapter.nextOptions && currentChapter.nextOptions.length > 0) {
+                  allExistingSuggestions = allExistingSuggestions.concat(currentChapter.nextOptions);
+              }
+
+              const existingSuggestionsStr = allExistingSuggestions.length > 0 ? allExistingSuggestions.join('\n- ') : '无';
               
               const systemContent = `你是一位创意总监，擅长为小说提供多样化、引人入胜的剧情走向建议。
 # 小说核心设定
@@ -1816,9 +2005,9 @@ ${currentChapter.text}
 # 用户 XP 偏好和写作要求：
 ${xpPreferences || '无特别偏好。'}
 
-请根据以上信息，为下一章节提供3-4个全新的、不同于已有建议的剧情走向。
+请根据以上信息，为下一章节提供4个全新的、不同于已有建议的剧情走向（字数不少于20字）。
 已有建议（请避免重复）：
-- ${existingSuggestions}
+- ${existingSuggestionsStr}
 
 输出格式要求：
 #### 后续发展建议
@@ -1837,15 +2026,22 @@ ${xpPreferences || '无特别偏好。'}
               const suggestionsPart = content.split('#### 后续发展建议')[1] || "";
               const newOptions = (suggestionsPart.match(/[-*]\s*(.+)/g) || []).map(s => s.replace(/[-*]\s*/, '').trim());
 
-              const opts = el('nextOptions');
-              opts.innerHTML = ''; 
-              newOptions.forEach(opt => {
-                  const b = document.createElement('button');
-                  b.className = 'secondary';
-                  b.textContent = opt;
-                  b.onclick = () => el('nextPlot').value = opt;
-                  opts.appendChild(b);
-              });
+              if (!currentChapter.allSuggestions) {
+                  currentChapter.allSuggestions = [];
+              }
+              currentChapter.allSuggestions.push({ suggestions: newOptions, timestamp: Date.now() });
+
+              // If legacy nextOptions exists, migrate it to allSuggestions before saving
+              if (currentChapter.nextOptions) {
+                  if (!currentChapter.allSuggestions.some(group => group.suggestions === currentChapter.nextOptions)) { // Avoid duplicating if already added
+                      currentChapter.allSuggestions.unshift({ suggestions: currentChapter.nextOptions, timestamp: currentChapter.createdAt }); // Add original options to start of list
+                  }
+                  delete currentChapter.nextOptions; // Remove legacy property
+              }
+
+              await saveCurrentBook();
+              await renderWriterView(); // Re-render to show new appended suggestions
+
               metaEl.textContent = `建议已重掷。 | 模型: ${res.model}`;
 
           } catch (e) {
@@ -1854,24 +2050,22 @@ ${xpPreferences || '无特别偏好。'}
               setButtonLoading(btn, false);
           }
       };
-
-      // Apply Modified Suggestion Function
-      el('btnApplyModifiedSuggestion').onclick = async () => {
-          if (!currentBook || currentChapterIndex === -1) {
-              alert('请先有章节。');
+      
+      // New button to clear suggestions
+      el('btnClearSuggestions').onclick = async () => {
+          if (!currentBook || currentChapterIndex === -1) return;
+          if (currentChapterIndex !== currentBook.chapters.length - 1) {
+              alert('只能清空最新章节的后续发展建议。');
               return;
           }
-          const customHint = el('customNextPlotModifier').value.trim();
-          const nextPlot = el('nextPlot').value.trim();
-          const finalHint = customHint || nextPlot;
-
-          if (!finalHint) {
-              alert('请在“下一章剧情走向”或“基于AI建议，修改或添加你的剧情想法”中输入内容。');
-              return;
+          if (confirm('确定要清空所有后续发展建议吗？此操作不可撤销。')) {
+              currentBook.chapters[currentChapterIndex].allSuggestions = [];
+              delete currentBook.chapters[currentChapterIndex].nextOptions; // Also clear legacy
+              await saveCurrentBook();
+              await renderWriterView(); // Re-render to clear suggestions
           }
-          
-          await generateChapter(finalHint, false);
       };
+
 
       // Generate Summary
       async function generateSummary() {
@@ -2003,6 +2197,7 @@ ${newChaptersText}
         } catch (e) { el("setupMeta").textContent = e.message; }
       };
 
+      // nextPlot is re-added, this now reads from it
       el("btnNext").onclick = async () => { await generateChapter(el("nextPlot").value.trim(), false); };
       el("btnRewriteChapter").onclick = async () => {
           if (!currentBook) return;
@@ -2159,7 +2354,7 @@ ${xpPreferences || '无特别偏好。'}
 小说类型：${selectedGenres || '不限'}
 关键词/核心设定：${keywords || '不限'}
 
-每篇大纲必须包含以下结构和内容，并以清晰的Markdown格式输出。确保每篇大纲都独立且风格略有差异，且严格符合我的XP偏好和禁忌。
+每篇大纲必须包含以下结构和内容，并以清晰的Markdown格式输出。确保每篇大纲都独立且风格略有差异，且严格符合XP偏好和禁忌。
 ---
 ### 大纲标题（请用三级标题，如：神秘古堡之谜）
 **书名：** [小说标题，需新颖吸引人]
@@ -2238,9 +2433,9 @@ ${xpPreferences || '无特别偏好。'}
                   result.genre = line.replace('**题材：：**', '').trim();
               } else if (line.startsWith('**风格：：**')) {
                   result.style = line.replace('**风格：：**', '').trim();
-              } else if (line.startsWith('**核心设定：**')) {
+              } else if (line.startsWith('**核心设定：：**')) {
                   currentField = 'world';
-                  result.world += line.replace('**核心设定：**', '').trim() + '\n';
+                  result.world += line.replace('**核心设定：：**', '').trim() + '\n';
               } else if (line.startsWith('**主要角色原型：：**')) {
                   currentField = 'characters';
                   result.characters += line.replace('**主要角色原型：：**', '').trim() + '\n';
@@ -2269,6 +2464,15 @@ ${xpPreferences || '无特别偏好。'}
           if (inspirationRecords.length === 0) { listEl.innerHTML = "<p>你还没有生成任何灵感大纲。去“创作灵感”页生成你的第一篇吧！</p>"; return; }
           inspirationRecords.slice().sort((a, b) => b.createdAt - a.createdAt).forEach(record => {
               const card = document.createElement("div"); card.className = "inspiration-card";
+              // Random light gradient background for aesthetic appeal
+              const colors = [
+                'linear-gradient(135deg, #e0f2f1, #b2dfdb)', /* Teal */
+                'linear-gradient(135deg, #fce4ec, #f8bbd0)', /* Pink */
+                'linear-gradient(135deg, #e3f2fd, #bbdefb)', /* Blue */
+                'linear-gradient(135deg, #fff3e0, #ffe0b2)', /* Orange */
+                'linear-gradient(135deg, #f3e5f5, #e1bee7)'  /* Purple */
+              ];
+              card.style.background = colors[Math.floor(Math.random() * colors.length)];
 
               const contentDiv = document.createElement('div');
               contentDiv.className = 'inspiration-card-content';
@@ -2448,8 +2652,8 @@ ${xpPreferences || '无特别偏好。'}
           }
           data.localStorage = {
               currentBookId: localStorage.getItem('currentBookId'),
-              activeCfgId: localStorage.getItem('activeCfgId'), // Global active config
-              activeModel: localStorage.getItem('activeModel')  // Global active model
+              activeCfgId: localStorage.getItem('activeCfgId'), 
+              activeModel: localStorage.getItem('activeModel')  
           };
 
           const jsonStr = JSON.stringify(data, null, 2); 
@@ -2545,16 +2749,16 @@ ${xpPreferences || '无特别偏好。'}
               }
               // For global config, the old 'activeCfgId' in localStorage was the global one.
               activeCfgId = localStorage.getItem('activeCfgId');
-              if (activeCfgId) localStorage.setItem('activeCfgId', activeCfgId); // Ensure it's re-saved under the correct key if needed
+              if (activeCfgId) localStorage.setItem('activeCfgId', activeCfgId); 
+              // Removed context-specific active IDs as they are no longer used
               localStorage.removeItem('activeWriterCfgId'); localStorage.removeItem('activeWriterModel');
               localStorage.removeItem('activeRerollCfgId'); localStorage.removeItem('activeRerollModel');
               localStorage.removeItem('activeInspirationCfgId'); localStorage.removeItem('activeInspirationModel');
-              localStorage.removeItem('globalActiveCfgId'); // Remove redundant global key
-              localStorage.removeItem('modelList'); // Clear old model list from local storage as it's now per-config
+              localStorage.removeItem('globalActiveCfgId'); 
+              localStorage.removeItem('modelList'); 
 
               localStorage.setItem('migratedToIndexedDB', 'true'); 
               console.log("Data migration from localStorage to IndexedDB attempted.");
-              // alert('数据已尝试从旧版本迁移到新存储系统 (IndexedDB)。请刷新页面以确保所有数据加载正常。'); // Removed to avoid too many alerts
           }
 
 
@@ -2571,21 +2775,20 @@ ${xpPreferences || '无特别偏好。'}
           await loadXpPreferences(); 
           await loadXpPreferencesHistory(); 
 
-          activeCfgId = localStorage.getItem('activeCfgId'); // Global active config
-          activeModel = localStorage.getItem('activeModel'); // Global active model
+          activeCfgId = localStorage.getItem('activeCfgId'); 
+          activeModel = localStorage.getItem('activeModel'); 
 
 
           applyUISettings();
           await refreshAllConfigSelects();
-          // Load models for the active config if available
           if (activeCfgId && configs.find(c => c.id === activeCfgId)) {
             await handleLoadModels(); 
           } else if (configs.length > 0) {
-            activeCfgId = configs[0].id; // Pick first config if none is active
+            activeCfgId = configs[0].id; 
             localStorage.setItem('activeCfgId', activeCfgId);
             await handleLoadModels();
           } else {
-            modelList = []; // Clear model list if no configs
+            modelList = []; 
             await refreshAllModelSelects();
           }
 
