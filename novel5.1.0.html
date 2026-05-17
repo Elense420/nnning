@@ -1,0 +1,2820 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=yes">
+  <title>AI 小说家</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <style>
+    /* 原有样式保持不变 */
+    :root { --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif; --radius: 0.8rem; --shadow: 0 4px 12px rgba(0,0,0,0.05); --shadow-lg: 0 10px 30px rgba(0,0,0,0.07); --transition: all 0.2s ease-in-out; --chapter-content-font-size: 1.05rem; }
+    body { font-family: var(--font-sans); transition: background-color 0.3s, color 0.3s; margin: 0; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+    .light-mode { --bg-main: #f4f7f5; --bg-panel: #ffffff; --text-primary: #1a2c21; --text-secondary: #5a6d61; --text-muted: #8a9d91; --border-color: #e5eae7; }
+    .dark-mode { --bg-main: #121815; --bg-panel: #1a231e; --text-primary: #e0e8e3; --text-secondary: #a0b0a8; --text-muted: #6a7c72; --border-color: #2a3831; }
+    [data-theme="green"] { --accent: #2e8b57; --accent-light: #d9eee4; --danger: #d9534f; }
+    [data-theme="pink"] { --accent: #e91e63; --accent-light: #fce4ec; --danger: #f06292; }
+    [data-theme="blue"] { --accent: #2196f3; --accent-light: #e3f2fd; --danger: #ef5350; }
+    [data-theme="yellow"] { --accent: #ffc107; --accent-light: #fff8e1; --danger: #ff7043; }
+    [data-theme="purple"] { --accent: #9c27b0; --accent-light: #f3e5f5; --danger: #ab47bc; }
+    [data-theme="white"] { --accent: #607d8b; --accent-light: #eceff1; --danger: #ef5350; }
+    .dark-mode [data-theme="green"] { --accent-light: rgba(46, 139, 87, 0.2); }
+    .dark-mode [data-theme="pink"] { --accent-light: rgba(233, 30, 99, 0.2); }
+    .dark-mode [data-theme="blue"] { --accent-light: rgba(33, 150, 243, 0.2); }
+    .dark-mode [data-theme="yellow"] { --accent-light: rgba(255, 193, 7, 0.2); }
+    .dark-mode [data-theme="purple"] { --accent-light: rgba(156, 39, 176, 0.2); }
+    .dark-mode [data-theme="white"] { --accent-light: rgba(96, 125, 139, 0.2); }
+    body { background-color: var(--bg-main); color: var(--text-primary); line-height: 1.6; }
+    .container { padding: 24px; max-width: 1200px; margin: 0 auto; }
+    .panel { background-color: var(--bg-panel); border: 1px solid var(--border-color); border-radius: var(--radius); padding: 24px; margin-bottom: 24px; box-shadow: var(--shadow); transition: var(--transition); }
+    h2 { margin-top: 0; font-size: 1.5rem; color: var(--text-primary); border-bottom: 2px solid var(--accent-light); padding-bottom: 12px; }
+    h3 { color: var(--text-secondary); font-size: 1.1rem; }
+    hr { border: none; border-top: 1px solid var(--border-color); margin: 24px 0; }
+    pre { white-space: pre-wrap; word-wrap: break-word; background-color: var(--bg-main); padding: 16px; border-radius: calc(var(--radius) - 4px); color: var(--text-secondary); }
+    .hidden { display: none !important; }
+    .topbar { position: sticky; top: 0; z-index: 100; display: flex; justify-content: space-between; align-items: center; padding: 12px 24px; background: var(--bg-panel-translucent, rgba(255, 255, 255, 0.5)); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-bottom: 1px solid var(--border-color); }
+    .dark-mode { --bg-panel-translucent: rgba(26, 35, 30, 0.5); }
+    .brand { font-size: 1.2rem; font-weight: 600; color: var(--accent); }
+    .top-actions { display: flex; gap: 8px; } /* Added flex for alignment */
+    .tab { padding: 8px 16px; border: none; background: transparent; color: var(--text-secondary); font-size: 1rem; border-radius: 8px; cursor: pointer; transition: var(--transition); }
+    .tab:hover { background: var(--accent-light); color: var(--accent); }
+    .tab.active { color: var(--accent); font-weight: 600; }
+    /* REMOVED GRID DISPLAY FOR GENERIC .options - IT WILL NOW BE FLEX FOR BETTER PC LAYOUT */
+    .options { display: flex; flex-wrap: wrap; gap: 12px; justify-content: flex-start; align-items: flex-start; }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .field { margin-bottom: 16px; }
+    .field label { display: block; font-weight: 500; margin-bottom: 8px; font-size: 0.9rem; color: var(--text-secondary); }
+    input, select, textarea { width: 100%; box-sizing: border-box; padding: 12px 16px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-main); color: var(--text-primary); font-size: 1rem; transition: var(--transition); }
+    input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
+    textarea { resize: vertical; min-height: 100px; }
+    .checkbox-label { display: flex; align-items: center; gap: 8px; font-weight: 500; }
+    .optional-container { margin-top: 12px; padding-left: 16px; border-left: 3px solid var(--accent-light); }
+    .slider-range { width: 100%; -webkit-appearance: none; appearance: none; height: 8px; background: var(--border-color); border-radius: 4px; outline: none; }
+    .slider-range::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 20px; height: 20px; background: var(--accent); border-radius: 50%; cursor: pointer; }
+    .slider-range::-moz-range-thumb { width: 20px; height: 20px; background: var(--accent); border-radius: 50%; cursor: pointer; }
+    .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 20px; }
+    button { padding: 10px 20px; border-radius: 8px; border: 1px solid transparent; font-size: 1rem; font-weight: 500; cursor: pointer; transition: var(--transition); display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+    button svg { width: 1.2em; height: 1.2em; fill: currentColor; }
+    button.primary { background: var(--accent); color: white; }
+    button.primary:hover { opacity: 0.85; }
+    button.secondary { background: var(--accent-light); color: var(--accent); }
+    button.secondary:hover { background: var(--accent); color: white; }
+    button.danger { background: var(--danger); color: white; border-color: var(--danger);}
+    button.danger:hover { background: var(--danger); opacity: 0.85; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .status, .hint { margin-top: 16px; font-size: 0.9rem; color: var(--text-muted); }
+    .novel-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
+    .novel-card { background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: var(--radius); padding: 20px; transition: var(--transition); cursor: pointer; }
+    .novel-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); }
+    .novel-card h3 { margin: 0 0 8px 0; }
+    .novel-card-meta { font-size: 0.85rem; color: var(--text-muted); }
+    .chapter-nav { display: flex; justify-content: center; align-items: center; gap: 20px; margin-bottom: 20px; flex-wrap: wrap; }
+    #chapterIndicator { font-weight: 600; color: var(--text-secondary); }
+    #chapterOutput { background: var(--bg-main); padding: 20px; border-radius: calc(var(--radius) - 4px); margin-bottom: 24px; white-space: pre-wrap; font-size: var(--chapter-content-font-size); line-height: 1.7; max-height: 60vh; overflow-y: auto; }
+    #chapterOutput.editing-active { border: 2px dashed var(--accent); padding: 18px; } /* 临时编辑状态样式 */
+    #chapterOutput[contenteditable="false"] { border: 1px solid var(--border-color); cursor: default; }
+
+    #writerChapterTitle {
+      font-size: 1.8rem;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border-color);
+      margin-bottom: 16px;
+      cursor: pointer; /* Indicate it's editable */
+    }
+    #writerChapterTitle.editing-active {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 2px var(--accent-light);
+    }
+    #writerChapterTitle[contenteditable="false"] { border-bottom: 1px solid var(--border-color); cursor: default; }
+
+    #genMeta { color: var(--text-muted); font-size: 0.8rem; padding: 10px; background: var(--bg-main); border-radius: 8px; white-space: pre-wrap; margin-bottom: 24px; }
+    /* Removed .options grid display here to avoid conflict with #nextOptions, which is now a plain div */
+    /* .options { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; } */
+
+    /* Original rewriteContainer is hidden, new structure for rewrite panel */
+    /* #rewriteContainer { padding: 20px; border: 1px dashed var(--accent); border-radius: var(--radius); margin-top: 24px; background-color: var(--accent-light); }
+    .dark-mode #rewriteContainer { background-color: transparent; } */
+    dialog { border: 1px solid var(--border-color); border-radius: var(--radius); box-shadow: var(--shadow-lg); padding: 24px; width: 90%; max-width: 800px; background: var(--bg-panel); color: var(--text-primary); }
+    dialog::backdrop { background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(3px); }
+    .dialog-close-btn { position: absolute; top: 16px; right: 16px; background: none; border: none; font-size: 1.8rem; cursor: pointer; color: var(--text-muted); line-height: 1; padding: 0; }
+    .dialog-content { max-height: 70vh; overflow-y: auto; padding-right: 10px; }
+    .dialog-section { margin-bottom: 24px; }
+    .chapter-list { list-style: none; padding: 0; }
+    .chapter-list li { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 8px; transition: var(--transition); }
+    .chapter-list li:hover { background-color: var(--accent-light); }
+    .chapter-list li label { flex-grow: 1; cursor: pointer; }
+    .chapter-list li input[type="checkbox"] { appearance: none; -webkit-appearance: none; width: 1.1em; height: 1.1em; border: 2px solid var(--border-color); border-radius: 4px; background-color: var(--bg-panel); margin: 0; cursor: pointer; position: relative; flex-shrink: 0; transition: background-color 0.2s, border-color 0.2s; }
+    .chapter-list li input[type="checkbox"]:checked { background-color: var(--accent); border-color: var(--accent); }
+    .chapter-list li input[type="checkbox"]:checked::after { content: '✔'; display: block; color: white; font-size: 0.8em; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); }
+    .theme-switcher { display: flex; gap: 10px; }
+    .theme-btn { width: 30px; height: 30px; border-radius: 50%; padding: 0; border: 2px solid transparent; }
+    .theme-btn.active { border-color: var(--accent); transform: scale(1.1); }
+    .switch { position: relative; display: inline-block; width: 60px; height: 34px; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .switch .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--border-color); transition: .4s; }
+    .switch .slider:before { position: absolute; content: ""; height: 26px; width: 26px; left: 4px; bottom: 4px; background-color: white; transition: .4s; }
+    input:checked + .slider { background-color: var(--accent); }
+    input:focus + .slider { box-shadow: 0 0 1px var(--accent); }
+    input:checked + .slider:before { transform: translateX(26px); }
+    .slider.round { border-radius: 34px; }
+    .slider.round:before { border-radius: 50%; }
+    .settings-review { margin-bottom: 24px; border: 1px solid var(--border-color); border-radius: var(--radius); background-color: var(--bg-panel); box-shadow: var(--shadow); overflow: hidden; }
+    .review-header { padding: 12px 16px; background-color: var(--accent-light); display: flex; justify-content: space-between; align-items: center; cursor: pointer; border-bottom: 1px solid var(--border-color); }
+    .review-header h3 { margin: 0; font-size: 1.1rem; color: var(--accent); font-weight: 600; }
+    .review-content { padding: 16px; max-height: 250px; overflow-y: auto; font-size: 0.9rem; line-height: 1.7; color: var(--text-secondary); transition: all 0.3s ease-out; }
+    .review-content.hidden { max-height: 0; padding-top: 0; padding-bottom: 0; visibility: hidden; opacity: 0; }
+    .review-content p { margin: 8px 0; padding-bottom: 8px; border-bottom: 1px dashed var(--border-color); }
+    .review-content p:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+    .review-content strong { color: var(--text-primary); font-weight: 600; }
+    button.small { padding: 4px 12px; font-size: 0.85rem; font-weight: normal; }
+    .dialog-footer-actions { margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border-color); justify-content: flex-end; }
+    .summary-item { background: var(--bg-main); margin-bottom: 8px; padding: 8px 12px; border-radius: 8px; transition: var(--transition); display: flex; justify-content: space-between; align-items: center; }
+    .summary-item:hover { background: var(--accent-light); }
+    .summary-date { font-size: 0.8rem; color: var(--text-muted); }
+    .delete-summary { background: none; border: none; color: var(--danger); cursor: pointer; font-size: 1.2rem; padding: 0 8px; margin-left: 8px; border-radius: 4px; transition: var(--transition); }
+    .delete-summary:hover { background-color: var(--danger); color: white; }
+
+    /* Custom styles for button spacing */
+    .writer-actions-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-top: 20px; /* Space from writer-header */
+      margin-bottom: 20px; /* Space to chapter-nav */
+    }
+
+    .writer-buttons-group {
+      display: flex;
+      gap: 12px; /* Space between buttons */
+      flex-wrap: wrap;
+    }
+
+    /* For chapter-nav, ensure separation from above elements */
+    .chapter-nav {
+      margin-top: 20px; /* Ensure good spacing from writer-actions-row */
+      margin-bottom: 20px; /* Keep existing bottom margin */
+    }
+
+    /* Inspiration cards */
+    .inspiration-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 20px;
+    }
+
+    .inspiration-card {
+        background: var(--bg-panel);
+        border-radius: var(--radius);
+        padding: 20px;
+        border: 1px solid var(--border-color);
+        transition: var(--transition);
+        position: relative; /* For checkbox positioning */
+    }
+
+    .inspiration-card:hover {
+        transform: translateY(-4px);
+        box-shadow: var(--shadow-lg);
+    }
+    .inspiration-card h3 {
+        margin: 0 0 8px 0;
+    }
+    .inspiration-card-meta {
+        font-size: 0.85rem;
+        color: var(--text-muted);
+    }
+    .inspiration-detail-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+        margin-top: 20px;
+        padding-top: 16px;
+        border-top: 1px solid var(--border-color);
+    }
+
+    /* Checkbox for inspiration card selection (now removed from direct card) */
+    /* .inspiration-card-checkbox {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        width: 24px;
+        height: 24px;
+        cursor: pointer;
+    } */
+    .inspiration-card-content {
+        cursor: pointer; /* Make clicking content open detail dialog */
+    }
+
+    /* Genre Tag styling */
+    .genre-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 10px;
+        background-color: var(--bg-main);
+    }
+    .genre-tag {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 12px;
+        background-color: var(--accent-light); /* Default color */
+        border-radius: 6px;
+        cursor: pointer;
+        transition: background-color 0.2s, color 0.2s;
+        font-size: 0.9rem;
+        color: var(--text-primary);
+        user-select: none; /* Prevent text selection on click */
+    }
+    .genre-tag:hover {
+        background-color: var(--accent);
+        color: white;
+    }
+    .genre-tag.selected {
+        background-color: var(--accent); /* Selected color */
+        color: white;
+    }
+
+    /* For Inspiration Records management buttons */
+    .inspiration-records-actions {
+        display: flex;
+        justify-content: flex-end; /* Align to right */
+        gap: 12px;
+        margin-bottom: 20px;
+        flex-wrap: wrap; /* Allow wrapping on small screens */
+    }
+    .inspiration-records-actions button.small { /* Apply small class for smaller size */
+        padding: 6px 14px; /* Adjust padding for small buttons */
+        font-size: 0.9rem;
+    }
+
+    /* For download dialog's inspiration list */
+    .download-inspiration-list {
+        max-height: 400px; /* Limit height */
+        overflow-y: auto; /* Scrollable */
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius);
+        padding: 10px;
+        margin-bottom: 20px;
+    }
+    .download-inspiration-list > div {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 12px;
+        border-bottom: 1px dashed var(--border-color);
+    }
+    .download-inspiration-list > div:last-child {
+        border-bottom: none;
+    }
+    .download-inspiration-list label {
+        flex-grow: 1;
+        cursor: pointer;
+        font-size: 0.95rem;
+    }
+    .download-inspiration-list input[type="checkbox"] {
+        appearance: none;
+        -webkit-appearance: none;
+        width: 1.1em;
+        height: 1.1em;
+        border: 2px solid var(--border-color);
+        border-radius: 4px;
+        background-color: var(--bg-panel);
+        margin: 0;
+        cursor: pointer;
+        position: relative;
+        flex-shrink: 0;
+        transition: background-color 0.2s, border-color 0.2s;
+    }
+    .download-inspiration-list input[type="checkbox"]:checked {
+        background-color: var(--accent);
+        border-color: var(--accent);
+    }
+    .download-inspiration-list input[type="checkbox"]:checked::after {
+        content: '✔';
+        display: block;
+        color: white;
+        font-size: 0.8em;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+    }
+    .download-inspiration-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+        margin-top: 20px;
+    }
+
+    /* 加载动画 */
+    .loader {
+      display: inline-block;
+      width: 1.2em;
+      height: 1.2em;
+      border: 2px solid currentColor;
+      border-radius: 50%;
+      border-top-color: transparent;
+      animation: spin 0.6s linear infinite;
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* 移动端优化 */
+    @media (max-width: 768px) {
+      .container { padding: 16px; }
+      .panel { padding: 20px; margin-bottom: 20px; border-radius: 18px; box-shadow: none; }
+      h2 { font-size: 1.5rem; padding-bottom: 12px; margin-bottom: 16px; }
+      h3 { font-size: 1.2rem; }
+      .topbar { padding: 12px 16px; }
+      .brand { font-size: 1.1rem; margin-right: 12px; }
+      .top-actions { gap: 8px; overflow-x: auto; white-space: nowrap; padding-bottom: 5px; /* Prevent scrollbar from overlapping */ justify-content: initial; } /* Allow tabs to scroll */
+      .top-actions::-webkit-scrollbar { height: 4px; }
+      .top-actions::-webkit-scrollbar-track { background: var(--bg-main); }
+      .top-actions::-webkit-scrollbar-thumb { background: var(--text-muted); border-radius: 2px; }
+
+      .tab { padding: 8px 14px; font-size: 1rem; min-height: 44px; flex-shrink: 0; } /* Ensure tabs don't shrink */
+      .grid2 { grid-template-columns: 1fr; gap: 20px; }
+      /* For .options on mobile, revert to single column grid if needed, or keep flex-wrap */
+      /* Since #nextOptions no longer has .options, this won't apply to it. */
+      /* If other .options elements still need single column on mobile, add it here */
+      .field { margin-bottom: 24px; }
+      .field label { font-size: 1rem; margin-bottom: 10px; }
+      input, select, textarea { padding: 14px 18px; font-size: 1rem; min-height: 52px; }
+      button { padding: 14px 20px; font-size: 1rem; min-height: 52px; }
+      .row { gap: 16px; margin-top: 24px; } /* Generic row margin, overridden by more specific classes */
+      .row button { width: auto; flex: 1 1 0; }
+      .options { grid-template-columns: 1fr; gap: 16px; } /* This applies to .options within panel, not necessarily all .options */
+
+      /* Mobile specific adjustments for writer section spacing */
+      .writer-actions-row {
+        flex-direction: column; /* Stack total word count and buttons */
+        align-items: flex-start; /* Align items to start */
+        margin-bottom: 25px; /* Increased space from chapter nav on mobile */
+        margin-top: 20px; /* Consistent spacing from writer-header */
+      }
+      .writer-buttons-group {
+        margin-top: 15px; /* Space between total word count and buttons on mobile */
+        width: 100%; /* Make buttons group take full width */
+        justify-content: stretch; /* Stretch buttons if possible */
+        gap: 10px; /* Slightly smaller gap for mobile buttons */
+      }
+      .writer-buttons-group button {
+        flex: 1 1 0; /* Distribute space evenly among buttons */
+      }
+      /* Ensure the writer-buttons-group in continueContainer does not over-stretch buttons too much on mobile */
+      #continueContainer .writer-buttons-group {
+          justify-content: center; /* Center the buttons */
+          gap: 15px; /* Slightly larger gap for clarity */
+          padding: 0 10px; /* Some padding */
+      }
+      #continueContainer .writer-buttons-group button {
+          flex: none; /* Do not force equal width */
+          width: auto; /* Auto width */
+          min-width: 120px; /* Minimum width */
+      }
+
+
+      .chapter-nav {
+        gap: 16px; /* Keep existing gap or adjust */
+        margin-bottom: 20px;
+        margin-top: 25px; /* Increased space from writer-actions-row on mobile */
+      }
+      .chapter-nav button { padding: 12px; flex: 1; }
+      #chapterJumpSelect { flex: 1 1 100%; min-height: 52px; margin-top: 10px; } /* Make jump select full width on mobile */
+
+      .settings-review { margin-bottom: 20px; }
+      .review-header { padding: 14px 18px; }
+      .review-header h3 { font-size: 1.1rem; }
+      .review-content { max-height: 250px; font-size: 1rem; padding: 16px; }
+      .writer-controls { flex-direction: column; gap: 16px; width: 100%; }
+      .writer-controls select { width: 100%; min-height: 52px; }
+      /* #rewriteContainer is no longer a div but a panel */
+      /* #rewriteContainer { padding: 18px; margin-top: 20px; } */
+      dialog { width: 100%; max-width: none; height: 100%; max-height: 100%; border-radius: 0; padding: 24px; box-sizing: border-box; margin: 0; }
+      dialog .dialog-content { max-height: calc(100vh - 140px); }
+      .dialog-close-btn { top: 16px; right: 16px; font-size: 2.2rem; }
+      .chapter-list li { padding: 16px; gap: 16px; }
+      .chapter-list li input[type="checkbox"] { width: 1.8em; height: 1.8em; }
+      .dialog-footer-actions { flex-direction: column; gap: 16px; }
+      .dialog-footer-actions button { width: 100%; }
+      #btnDownloadArchives { width: 100%; }
+      .status, .hint { font-size: 0.95rem; margin-top: 12px; }
+      .theme-switcher { gap: 10px; }
+      .theme-btn { width: 44px; height: 44px; }
+      .switch { transform: scale(1); transform-origin: left; }
+      hr { margin: 20px 0; }
+
+      #writerChapterTitle { font-size: 1.5rem; }
+
+      .inspiration-records-actions { /* Adjust for mobile layout */
+        justify-content: flex-start; /* Align left for better flow */
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .inspiration-records-actions button {
+        width: 100%; /* Full width buttons */
+        margin-top: 10px; /* Space between stacked buttons */
+      }
+      .inspiration-records-actions button:first-child {
+        margin-top: 0; /* No top margin for first button */
+      }
+
+      /* Style for suggestion groups */
+      .suggestion-group {
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 10px;
+        margin-bottom: 10px;
+        background-color: var(--bg-main);
+      }
+      .suggestion-group-header {
+        font-weight: bold;
+        color: var(--text-primary);
+        margin-bottom: 5px;
+      }
+      .suggestion-group .options {
+        display: flex; /* Changed to flex for better wrapping of suggestions */
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 5px;
+      }
+      .suggestion-group .options button {
+          flex: 1 1 auto; /* Allow buttons to grow/shrink but not too small */
+          min-width: 100px;
+          padding: 8px 12px;
+          font-size: 0.9rem;
+      }
+
+    }
+  </style>
+</head>
+<body data-theme="green" class="light-mode">
+  <header class="topbar">
+    <div class="brand">AI 小说家</div>
+    <div class="top-actions">
+      <button id="btnTabNovels" class="tab">我的书库</button>
+      <button id="btnTabSetup" class="tab active">写作设定</button>
+      <button id="btnTabWriter" class="tab">小说扩写</button>
+      <button id="btnTabInspiration" class="tab">灵感供给站</button> <!-- New tab for Inspiration Hub -->
+      <button id="btnTabConfig" class="tab">API配置及基础设置</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- 我的书库页 -->
+    <section id="viewNovels" class="view hidden">
+      <div class="panel">
+        <h2>我的书库</h2>
+        <div id="novelList" class="novel-list"></div>
+        <div class="hint">所有小说数据均保存在你的浏览器本地。</div>
+      </div>
+    </section>
+
+    <!-- API配置及基础设置页 -->
+    <section id="viewConfig" class="view hidden">
+      <div class="panel">
+        <h2>API 配置</h2> <!-- Global API config reverted -->
+        <div class="grid2">
+          <div class="field"><label for="cfgName">配置名称</label><input id="cfgName" placeholder="例如：主线路"/></div>
+          <div class="field"><label for="cfgProvider">Provider 类型</label><select id="cfgProvider"><option value="openai-compatible">OpenAI 兼容</option></select></div>
+          <div class="field"><label for="cfgBaseUrl">Base URL</label><input id="cfgBaseUrl" placeholder="https://api.openai.com/v1"/></div>
+          <div class="field"><label for="cfgApiKey">API Key</label><input id="cfgApiKey" type="password"/></div>
+        </div>
+        <div class="row"><button id="btnAddCfg">保存新配置</button><button id="btnTestCfg" class="secondary">测试连接</button></div>
+        <div id="cfgStatus" class="status"></div>
+      </div>
+      <div class="panel">
+        <h3>已保存的配置</h3>
+        <div class="row">
+          <select id="cfgSelect"></select> <!-- Global config select -->
+          <button id="btnLoadModels">加载模型列表</button>
+          <button id="btnDeleteCfg" class="danger">删除当前配置</button>
+        </div>
+        <div class="row">
+          <label for="modelSelect">可用模型：</label>
+          <select id="modelSelect"></select> <!-- Global model select -->
+        </div>
+        <div class="hint">所有 AI 功能（小说扩写、重掷建议、灵感生成等）都将使用此处选择的 API 线路和模型。</div>
+      </div>
+      <div class="panel">
+        <h2>我的 XP 爱好配置</h2> <!-- New section for XP Preferences -->
+        <div class="field">
+          <label for="xpPreferencesInput">我的 XP 爱好和写作偏好 (会影响灵感生成和章节创作)</label>
+          <textarea id="xpPreferencesInput" rows="6" placeholder="- 角色必须是强大而独立的女性，不接受傻白甜。
+- 剧情必须有反转，避免一眼看穿的套路。
+- 禁忌：NTR、男主出轨等。
+- 偏爱：黑暗系、末世生存、强强对话。"></textarea>
+        </div>
+        <div class="row">
+          <select id="xpPreferencesHistorySelect"></select>
+          <button id="btnLoadXpPreferences" class="secondary">加载历史 XP</button>
+          <button id="btnSaveXpPreferences" class="secondary">💾 保存当前 XP</button>
+          <button id="btnDeleteXpPreferencesHistory" class="danger">删除历史 XP</button>
+        </div>
+        <div id="xpPreferencesStatus" class="status"></div>
+      </div>
+      <div class="panel">
+        <h2>界面设置</h2>
+        <div class="field">
+            <label>主题颜色</label>
+            <div id="themeSwitcher" class="theme-switcher">
+                <button data-theme="green" class="theme-btn active" style="background:#2e8b57;" title="淡墨绿"></button>
+                <button data-theme="pink" class="theme-btn" style="background:#e91e63;" title="淡粉色"></button>
+                <button data-theme="blue" class="theme-btn" style="background:#2196f3;" title="淡蓝色"></button>
+                <button data-theme="yellow" class="theme-btn" style="background:#ffc107;" title="淡黄色"></button>
+                <button data-theme="purple" class="theme-btn" style="background:#9c27b0;" title="淡紫色"></button>
+                <button data-theme="white" class="theme-btn" style="background:#607d8b;" title="纯白"></button>
+            </div>
+        </div>
+        <div class="field">
+            <label>显示模式</label>
+            <label class="switch">
+                <input type="checkbox" id="modeToggle">
+                <span class="slider round"></span>
+            </label>
+        </div>
+        <div class="field">
+            <label for="chapterFontSize">章节内容字体大小</label>
+            <select id="chapterFontSize">
+                <option value="0.9rem">小</option>
+                <option value="1.05rem" selected>中</option>
+                <option value="1.2rem">大</option>
+                <option value="1.35rem">特大</option>
+            </select>
+        </div>
+      </div>
+      <div class="panel">
+        <h2>数据备份与恢复</h2>
+        <div class="row">
+            <button id="btnBackupData" class="secondary">⬇️ 备份所有数据</button>
+            <button id="btnRestoreData" class="secondary">⬆️ 恢复所有数据</button>
+            <input type="file" id="restoreFileInput" accept=".json" style="display:none;">
+        </div>
+        <div id="backupStatus" class="status"></div>
+      </div>
+    </section>
+
+    <!-- 写作设定页 -->
+    <section id="viewSetup" class="view">
+        <div class="panel"><h2>创建新小说</h2><div class="field"><label for="novelTitle">小说书名 (必填)</label><input id="novelTitle" placeholder="给你的故事起个名字"/></div></div>
+        <div class="panel">
+            <h2>小说核心设定</h2>
+            <div class="grid2">
+                <div class="field"><label for="novelGenre">小说类型/题材 (必填)</label><input id="novelGenre" placeholder="都市异能、悬疑、科幻"/></div>
+                <div class="field"><label for="novelStyle">目标读者与风格 (必填)</label><input id="novelStyle" placeholder="轻快幽默、严肃史诗、爽文"/></div>
+                <div class="field"><label for="chapterWords">每章字数 (必填)</label><input id="chapterWords" type="number" min="200" step="100" value="2000"/></div>
+                <div class="field"><label for="novelPOV">人称</label><select id="novelPOV"><option value="第三人称">第三人称</option><option value="第一人称">第一人称</option></select></div>
+                <div class="field"><label for="novelTense">时态</label><select id="novelTense"><option value="过去时">过去时</option><option value="现在时">现在时</option></select></div>
+                <div class="field"><label for="temperature">温度 (0-2)</label><input id="temperature" type="number" min="0" max="2" step="0.1" value="0.8"/></div>
+            </div>
+            <div class="field"><label for="contextMemory">上下文记忆章节数: <span id="contextMemoryValue">3</span></label><input type="range" id="contextMemory" min="0" max="20" value="3" class="slider-range"></div>
+            <hr/>
+            <div class="field"><label for="novelCharacters">主要角色表 (可选)</label><textarea id="novelCharacters" rows="4" placeholder="例如：- 林昼：男主，冷静理性..."></textarea></div>
+            <div class="field"><label for="novelWorld">世界观设定 (可选)</label><textarea id="novelWorld" rows="4" placeholder="世界规则、科技/魔法体系..."></textarea></div>
+        </div>
+
+        <!-- 风格学习板块 -->
+        <div class="panel">
+            <h2>📖 风格学习 (可选)</h2>
+            <div class="field">
+                <label>上传或粘贴一篇小说，让AI模仿其写作风格</label>
+                <div class="drop-zone" id="drop-zone-style" style="border:2px dashed var(--border-color); border-radius:12px; padding:24px; text-align:center; margin-bottom:12px;">
+                    将 .txt 或 .md 文件拖到此处，或点击选择
+                </div>
+                <input type="file" id="style-file-input" accept=".txt,.md" style="display:none;">
+                <textarea id="style-text-input" rows="6" placeholder="或在此粘贴小说文本..."></textarea>
+            </div>
+            <div class="row" style="margin-top:12px;">
+                <select id="style-history-select"></select>
+                <button id="btn-load-style-history" class="secondary">加载</button>
+                <button id="btn-delete-style-history" class="secondary danger">删除</button>
+            </div>
+            <div class="row">
+                <button id="btn-apply-style" class="secondary">🎯 应用风格</button>
+                <button id="btn-clear-style" class="secondary">🗑️ 清除风格</button>
+            </div>
+            <div id="style-status" class="status" style="color:var(--accent);"></div>
+        </div>
+
+        <div class="panel">
+            <h2>AI 角色与大纲</h2>
+            <div class="field"><label for="aiPersona">AI 设定 (自定义程序行为)</label><textarea id="aiPersona" rows="5" placeholder="这是最顶层的指令..."></textarea><div class="row"><select id="personaHistory"></select><button id="btnLoadPersona" class="secondary">加载</button><button id="btnSavePersona" class="secondary">保存</button></div></div>
+            <div class="field"><label for="novelOutline">小说大纲 (必填)</label><textarea id="novelOutline" rows="8" placeholder="请写下主线..."></textarea></div>
+            <div class="row"><button id="btnImproveOutline" class="secondary">AI 完善大纲</button><select id="outlineHistory"></select><button id="btnRestoreOutline" class="secondary">回滚</button></div>
+        </div>
+        
+        <div class="panel">
+            <h2>开始创作</h2>
+            <div class="row">
+                <button id="btnStart" class="primary">开始扩写第一章</button>
+                <button id="btnUpdateSettings" class="secondary">💾 更新本小说设定</button>
+            </div>
+            <div id="setupMeta" class="status"></div>
+        </div>
+    </section>
+
+    <!-- 小说扩写页 -->
+    <section id="viewWriter" class="view hidden">
+      <div class="panel">
+        <div id="settingsReviewPanel" class="settings-review">
+          <div id="reviewHeader" class="review-header">
+            <h3>📖 本书设定回顾 (不可编辑)</h3>
+            <button id="btnCollapseReview" class="secondary small">折叠</button>
+          </div>
+          <div id="reviewContent" class="review-content"></div>
+        </div>
+        <div class="writer-header">
+          <h2 id="writerChapterTitle" contenteditable="true" title="点击编辑章节标题"></h2>
+          <div class="writer-controls">
+            <span id="currentApiInfo">线路: <span id="writerApiName"></span> | 模型: <span id="writerModelName"></span></span>
+          </div>
+        </div>
+        <div class="writer-actions-row"> <!-- Adjusted class here -->
+          <div><span id="totalWordCount">总字数: 0</span></div>
+          <div class="writer-buttons-group"> <!-- Added wrapper for buttons -->
+            <button id="btnToggleEditMode" class="secondary">切换到阅读模式</button> <!-- New toggle button -->
+            <button id="btnSaveCurrentChapter" class="secondary">💾 保存当前章节</button> <!-- Removed 'small' class -->
+            <button id="btnGenerateSummary" class="secondary">📝 生成阶段性总结</button>
+          </div>
+        </div>
+        <div class="chapter-nav"> <!-- Adjusted margin here through CSS class -->
+          <button id="btnPrevChapter" class="secondary">上一章</button>
+          <span id="chapterIndicator"></span>
+          <button id="btnNextChapter" class="secondary">下一章</button>
+          <select id="chapterJumpSelect" title="快速跳转章节"></select>
+        </div>
+        <div id="genMeta" class="meta"></div>
+        <pre id="chapterOutput" contenteditable="true" title="点击编辑章节内容"></pre>
+        <hr />
+        <div class="settings-review">
+          <div class="review-header">
+            <h3>✒️ 重写当前章节</h3>
+            <button id="btnCollapseRewrite" class="secondary small">折叠</button>
+          </div>
+          <div id="rewriteContent" class="review-content">
+            <div class="field">
+                <label for="rewritePlot">请输入本章新的剧情走向：</label>
+                <textarea id="rewritePlot" rows="3" placeholder="重写后，当前版本及之后章节将被存档。"></textarea>
+            </div>
+            <div class="row"><button id="btnRewriteChapter" class="danger">确认重写</button></div>
+            <div id="rewriteMeta" class="status"></div>
+          </div>
+        </div>
+        <div id="continueContainer" class="hidden">
+            <hr />
+            <h3 style="margin-top: 25px;">后续章节创作</h3> <!-- Adjusted margin here -->
+            <!-- Re-added nextPlot input box -->
+            <div class="field">
+                <label for="nextPlot">下一章剧情走向 (可选)</label>
+                <textarea id="nextPlot" rows="3" placeholder="填写后点击“继续扩写”。"></textarea>
+            </div>
+            <h4 style="margin-top: 20px;">AI 给出的后续方向</h4> <!-- Adjusted margin here -->
+            <div id="nextOptions">
+                <!-- AI suggestions will be dynamically added here -->
+            </div>
+            <div class="writer-buttons-group" style="margin-top: 20px;"> <!-- Adjusted margin here -->
+                <button id="btnRerollSuggestions" class="secondary">🔄 重掷建议</button> <!-- New button -->
+                <button id="btnClearSuggestions" class="secondary">清空建议</button> <!-- New clear button -->
+                <button id="btnNext" class="primary">继续扩写下一章</button>
+                <button id="btnBackToSetup" class="secondary">返回修改设定</button>
+            </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 灵感供给站页 -->
+    <section id="viewInspiration" class="view hidden">
+      <div class="top-actions" style="margin-bottom: 20px;">
+        <button id="btnTabInspirationCreate" class="tab active">创作灵感</button>
+        <button id="btnTabInspirationRecords" class="tab">灵感记录</button>
+      </div>
+      <!-- 创作灵感面板 -->
+      <div id="inspirationCreatePanel">
+        <div class="panel">
+          <h2>生成新的灵感大纲</h2>
+          <div class="field">
+            <label>选择小说类型/题材 (可多选，点击标签选中/取消选中)</label>
+            <div id="inspInputGenreTags" class="genre-tags">
+              <span class="genre-tag" data-value="玄幻">玄幻</span>
+              <span class="genre-tag" data-value="奇幻">奇幻</span>
+              <span class="genre-tag" data-value="武侠">武侠</span>
+              <span class="genre-tag" data-value="仙侠">仙侠</span>
+              <span class="genre-tag" data-value="科幻">科幻</span>
+              <span class="genre-tag" data-value="都市">都市</span>
+              <span class="genre-tag" data-value="言情">言情</span>
+              <span class="genre-tag" data-value="耽美">耽美</span>
+              <span class="genre-tag" data-value="悬疑">悬疑</span>
+              <span class="genre-tag" data-value="惊悚">惊悚</span>
+              <span class="genre-tag" data-value="历史">历史</span>
+              <span class="genre-tag" data-value="游戏">游戏</span>
+              <span class="genre-tag" data-value="轻小说">轻小说</span>
+              <span class="genre-tag" data-value="同人">同人</span>
+              <span class="genre-tag" data-value="冒险">冒险</span
+              ><span class="genre-tag" data-value="青春">青春</span
+              ><span class="genre-tag" data-value="末世">末世</span
+              ><span class="genre-tag" data-value="穿越">穿越</span
+              ><span class="genre-tag" data-value="重生">重生</span
+              ><span class="genre-tag" data-value="变身">变身</span
+              ><span class="genre-tag" data-value="女尊">女尊</span
+              ><span class="genre-tag" data-value="系统">系统</span
+              ><span class="genre-tag" data-value="美食">美食</span
+              ><span class="genre-tag" data-value="日常">日常</span
+              ><span class="genre-tag" data-value="其他">其他</span>
+            </div>
+          </div>
+          <div class="field">
+            <label for="inspInputKeywords">关键词/核心设定 (用逗号分隔，例如：赛博朋克, 末日求生, 养成系, 复仇者)</label>
+            <input id="inspInputKeywords" placeholder="输入你想看的小说关键词或核心设定"/>
+          </div>
+          <div class="field">
+            <label for="inspNumOutlines">希望一次性生成多少篇大纲？</label>
+            <select id="inspNumOutlines">
+              <option value="1">1 篇</option>
+              <option value="2">2 篇</option>
+              <option value="3" selected>3 篇</option>
+              <option value="4">4 篇</option>
+            </select>
+          </div>
+          <div class="row">
+            <button id="btnGenerateInspiration" class="primary">✨ 随机灵感</button>
+          </div>
+          <div id="inspirationStatus" class="status"></div>
+        </div>
+      </div>
+      <!-- 灵感记录面板 -->
+      <div id="inspirationRecordsPanel" class="hidden">
+        <div class="panel">
+          <h2>我的灵感记录</h2>
+          <div class="inspiration-records-actions"> <!-- New div for grouping and styling buttons -->
+              <button id="btnBackupInspirationRecords" class="secondary small">⬇️ 备份灵感数据</button>
+              <button id="btnRestoreInspirationRecords" class="secondary small">⬆️ 恢复灵感数据</button>
+              <input type="file" id="restoreInspirationFileInput" accept=".json" style="display:none;">
+              <button id="btnDownloadInspirations" class="secondary small">📥 下载灵感</button>
+          </div>
+          <div id="inspirationList" class="inspiration-list">
+            <!-- Inspiration cards will be rendered here -->
+          </div>
+          <div class="hint">所有灵感大纲均保存在你的浏览器本地。点击卡片内容可查看详情。</div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- 书籍详情 Dialog -->
+  <dialog id="bookDetailDialog">
+    <h2 id="bookDetailTitle"></h2><button id="closeBookDetail" class="dialog-close-btn">&times;</button>
+    <div class="dialog-content">
+        <div class="dialog-section"><h3>小说大纲</h3><pre id="bookDetailOutline"></pre></div>
+        <div class="dialog-section"><h3>章节目录 (<span id="activeChapterCount"></span>)</h3><ul id="activeChaptersList" class="chapter-list"></ul></div>
+        <div class="dialog-section">
+            <h3>历史存档 (<span id="archivedChapterCount"></span>)</h3>
+            <p class="hint">当重写某个章节时，该章节的旧版本会保存在这里。</p>
+            <ul id="archivedChaptersList" class="chapter-list"></ul>
+            <div class="row"><button id="btnDownloadArchives" class="secondary">下载选中存档 (TXT)</button></div>
+        </div>
+        <div class="dialog-section">
+            <h3>📚 阶段性总结回顾</h3>
+            <div id="summariesList" style="max-height: 200px; overflow-y: auto;"></div>
+            <div class="hint">点击总结内容可查看详情，点击“删除”可移除该条总结。</div>
+        </div>
+        <div class="dialog-footer-actions row">
+            <button class="primary with-icon" id="btnBookDetailContinue"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>继续写作</button>
+            <button class="secondary with-icon" id="btnBookDetailDownload"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M5 20h14v-2H5v2zm7-18c-3.87 0-7 3.13-7 7 0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>下载有效章节</button>
+            <button class="danger with-icon" id="btnBookDetailDelete"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>删除本书</button>
+        </div>
+    </div>
+  </dialog>
+
+  <!-- 阅读 Dialog -->
+  <dialog id="readChapterDialog"><h2 id="readChapterTitle"></h2><button id="closeReadChapter" class="dialog-close-btn">&times;</button><div class="dialog-content"><pre id="readChapterContent"></pre>
+    <div id="readChapterSuggestions" style="margin-top: 20px; padding-top: 15px; border-top: 1px dashed var(--border-color);">
+        <h4>AI 给出的后续发展建议 (仅供参考)</h4>
+        <div id="readChapterNextOptions" class="options"></div>
+    </div>
+  </div></dialog>
+
+  <!-- 下载 Dialog -->
+  <dialog id="downloadDialog">
+    <h3>下载小说</h3>
+    <div class="field">
+        <label for="downloadFormat">格式：</label>
+        <select id="downloadFormat">
+            <option value="txt-single">合并 TXT</option>
+            <option value="zip-txt">分章 ZIP (TXT)</option>
+            <option value="html-single">合并 HTML</option>
+            <option value="zip-html">分章 ZIP (HTML)</option>
+        </select>
+    </div>
+    <div class="row"><button id="btnConfirmDownload" class="primary">确认</button><button id="btnCancelDownload" class="secondary">取消</button></div>
+  </dialog>
+
+  <!-- 总结内容预览 Dialog -->
+  <dialog id="summaryViewDialog">
+    <h3>📄 总结详情</h3>
+    <button id="closeSummaryView" class="dialog-close-btn">&times;</button>
+    <div class="dialog-content">
+      <div id="summaryViewContent" style="white-space: pre-wrap;"></div>
+    </div>
+  </dialog>
+
+  <!-- 灵感大纲详情 Dialog -->
+  <dialog id="inspirationDetailDialog">
+    <h2 id="inspirationDetailTitle"></h2><button id="closeInspirationDetail" class="dialog-close-btn">&times;</button>
+    <div class="dialog-content">
+        <div class="dialog-section"><h3>题材/类型</h3><p id="inspirationDetailGenre"></p></div>
+        <div class="dialog-section"><h3>风格</h3><p id="inspirationDetailStyle"></p></div>
+        <div class="dialog-section"><h3>核心设定</h3><pre id="inspirationDetailWorld"></pre></div>
+        <div class="dialog-section"><h3>主要角色原型</h3><pre id="inspirationDetailCharacters"></pre></div>
+        <div class="dialog-section"><h3>剧情梗概</h3><pre id="inspirationDetailOutline"></pre></div>
+        <div class="inspiration-detail-actions">
+            <button class="primary" id="btnStartCreationFromInspiration">开始创作</button>
+            <button class="danger" id="btnDeleteInspiration">删除此灵感</button>
+        </div>
+    </div>
+  </dialog>
+
+  <!-- 下载灵感大纲 Dialog -->
+  <dialog id="downloadInspirationsDialog">
+    <h3>下载灵感大纲</h3>
+    <button id="closeDownloadInspirationsDialog" class="dialog-close-btn">&times;</button>
+    <div class="dialog-content">
+        <div class="field">
+            <button id="btnSelectAllInspirations" class="secondary small" style="margin-bottom: 10px;">全选</button>
+            <div id="downloadInspirationList" class="download-inspiration-list">
+                <!-- Inspiration checkboxes will be loaded here -->
+            </div>
+        </div>
+        <div class="download-inspiration-actions">
+            <button id="btnConfirmDownloadInspirations" class="primary">下载</button>
+            <button id="btnCancelDownloadInspirations" class="secondary">取消</button>
+        </div>
+    </div>
+  </dialog>
+
+
+  <script>
+    (function() {
+      const el = (id) => document.getElementById(id);
+
+      // --- IndexedDB Setup ---
+      const DB_NAME = 'aiNovelistDB';
+      const DB_VERSION = 1; // Increment this to trigger onupgradeneeded
+      let dbInstance;
+
+      const STORE_NAMES = {
+        BOOKS: 'books',
+        CONFIGS: 'configs', // Stores { id: 'all', data: [...] }
+        PERSONA_HISTORY: 'personaHistory',
+        OUTLINE_HISTORY: 'outlineHistory',
+        UI_SETTINGS: 'uiSettings', // Stores { id: 'current', ... }
+        STYLE_HISTORY: 'styleHistory',
+        XP_PREFERENCES: 'xpPreferences', // Stores { id: 'current', content: '...' }
+        XP_PREFERENCES_HISTORY: 'xpPreferencesHistory',
+        INSPIRATION_RECORDS: 'inspirationRecords'
+      };
+
+      async function openDB() {
+        return new Promise((resolve, reject) => {
+          const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+          request.onupgradeneeded = (event) => {
+            const db = event.target.result;
+            // Create object stores if they don't exist
+            Object.values(STORE_NAMES).forEach(storeName => {
+              if (!db.objectStoreNames.contains(storeName)) {
+                if ([STORE_NAMES.PERSONA_HISTORY, STORE_NAMES.OUTLINE_HISTORY, STORE_NAMES.STYLE_HISTORY, STORE_NAMES.XP_PREFERENCES_HISTORY].includes(storeName)) {
+                  db.createObjectStore(storeName, { keyPath: 'id', autoIncrement: true });
+                } else {
+                  db.createObjectStore(storeName, { keyPath: 'id' });
+                }
+              }
+            });
+          };
+
+          request.onsuccess = (event) => {
+            dbInstance = event.target.result;
+            resolve(dbInstance);
+          };
+
+          request.onerror = (event) => {
+            console.error("IndexedDB error:", event.target.errorCode);
+            reject("Error opening IndexedDB");
+          };
+        });
+      }
+
+      async function transact(storeName, mode, callback) {
+        const db = dbInstance || await openDB();
+        const transaction = db.transaction(storeName, mode);
+        const store = transaction.objectStore(storeName);
+        return new Promise((resolve, reject) => {
+          transaction.oncomplete = () => resolve();
+          transaction.onerror = (event) => reject(event.target.error);
+          callback(store, resolve, reject);
+        });
+      }
+
+      async function dbPut(storeName, data) {
+        return transact(storeName, 'readwrite', (store, resolve) => {
+          const request = store.put(data);
+          request.onsuccess = () => resolve(request.result); // Resolve with the key of the new record
+        });
+      }
+
+      async function dbGet(storeName, key) {
+        return new Promise(async (resolve, reject) => {
+          await transact(storeName, 'readonly', (store) => {
+            const request = store.get(key);
+            request.onsuccess = (event) => resolve(event.target.result);
+            request.onerror = (event) => reject(event.target.error);
+          });
+        });
+      }
+
+      async function dbGetAll(storeName) {
+        return new Promise(async (resolve, reject) => {
+          await transact(storeName, 'readonly', (store) => {
+            const request = store.getAll();
+            request.onsuccess = (event) => resolve(event.target.result);
+            request.onerror = (event) => reject(event.target.error);
+          });
+        });
+      }
+
+      async function dbDelete(storeName, key) {
+        return transact(storeName, 'readwrite', (store) => {
+          store.delete(key);
+        });
+      }
+
+      async function dbClear(storeName) {
+        return transact(storeName, 'readwrite', (store) => {
+          store.clear();
+        });
+      }
+      // --- End IndexedDB Setup ---
+
+
+      // Global state - now largely loaded from IndexedDB
+      let books = [];
+      let currentBook = null;
+      let currentChapterIndex = -1;
+      let configs = []; // All API configurations
+      let activeCfgId = null; // ID of the currently active API configuration (global)
+      let activeModel = null; // ID of the currently active model for that configuration (global)
+
+      let modelList = []; // Models from currently selected globalCfgId
+      let personaHistory = [];
+      let outlineHistory = [];
+      let uiSettings = { theme: "green", mode: "light", chapterFontSize: "1.05rem" };
+      let bookToDownloadId = null;
+      let styleHistory = [];
+      let xpPreferences = ''; 
+      let xpPreferencesHistory = []; 
+      let inspirationRecords = []; 
+
+      // Stream control
+      let currentAbortController = null;
+      let isGenerating = false;
+      let generationStage = '';
+
+      // Edit mode state for writer view
+      let isWriterEditMode = true; 
+
+      const TABS = { 
+          novels: { btn: el("btnTabNovels"), view: el("viewNovels") }, 
+          setup: { btn: el("btnTabSetup"), view: el("viewSetup") }, 
+          writer: { btn: el("btnTabWriter"), view: el("viewWriter") }, 
+          inspiration: { btn: el("btnTabInspiration"), view: el("viewInspiration") }, 
+          config: { btn: el("btnTabConfig"), view: el("viewConfig") }
+      };
+
+      async function setView(viewName) {
+          Object.values(TABS).forEach(({ btn, view }) => {
+              const isActive = view === TABS[viewName].view;
+              btn.classList.toggle("active", isActive);
+              view.classList.toggle("hidden", !isActive);
+          });
+          if (viewName === 'novels') await renderBookList();
+          if (viewName === 'writer') {
+              if (currentBook) {
+                await renderSettingsReview();
+                await updateTotalWordCount();
+                await renderChapterJumpList();
+                toggleWriterEditMode(isWriterEditMode); 
+                updateWriterApiInfo(); // Update API info display
+              } else {
+                alert('请先从“我的书库”选择一本小说，或在“写作设定”页面创建新小说。');
+                setView('novels');
+                return;
+              }
+          }
+          if (viewName === 'config') {
+              await refreshAllConfigSelects();
+              await refreshAllModelSelects();
+              await loadXpPreferences();
+              await loadXpPreferencesHistory();
+          }
+          if (viewName === 'inspiration') {
+              showInspirationPanel('create'); 
+              await renderInspirationRecords(); 
+          }
+      }
+
+      // UI Settings
+      function applyUISettings() {
+          document.body.className = uiSettings.mode === 'dark' ? 'dark-mode' : 'light-mode';
+          document.body.dataset.theme = uiSettings.theme;
+          if (el('modeToggle')) el('modeToggle').checked = uiSettings.mode === 'dark';
+          document.querySelectorAll('.theme-btn').forEach(btn => { btn.classList.toggle('active', btn.dataset.theme === uiSettings.theme); });
+          document.documentElement.style.setProperty('--chapter-content-font-size', uiSettings.chapterFontSize);
+          if (el('chapterFontSize')) el('chapterFontSize').value = uiSettings.chapterFontSize;
+      }
+
+      async function saveUISettings() { 
+          await dbPut(STORE_NAMES.UI_SETTINGS, { id: 'current', ...uiSettings }); 
+      }
+
+      if (el('modeToggle')) el('modeToggle').onchange = async (e) => { uiSettings.mode = e.target.checked ? 'dark' : 'light'; await saveUISettings(); applyUISettings(); };
+      if (el('themeSwitcher')) el('themeSwitcher').addEventListener('click', async (e) => { if (e.target.matches('.theme-btn')) { uiSettings.theme = e.target.dataset.theme; await saveUISettings(); applyUISettings(); } });
+      if (el('chapterFontSize')) el('chapterFontSize').onchange = async (e) => { uiSettings.chapterFontSize = e.target.value; await saveUISettings(); applyUISettings(); };
+
+      Object.keys(TABS).forEach(key => TABS[key].btn.onclick = () => setView(key));
+      el("btnBackToSetup").onclick = async () => { if(currentBook) await loadSettingsFromBook(currentBook); setView("setup"); };
+
+      // Writer Edit Mode Toggle
+      function toggleWriterEditMode(enableEdit) {
+          isWriterEditMode = enableEdit;
+          const titleEl = el('writerChapterTitle');
+          const outputEl = el('chapterOutput');
+          const saveBtn = el('btnSaveCurrentChapter');
+          const toggleBtn = el('btnToggleEditMode');
+
+          titleEl.contentEditable = enableEdit;
+          outputEl.contentEditable = enableEdit;
+
+          if (enableEdit) {
+              titleEl.classList.add('editing-active');
+              outputEl.classList.add('editing-active');
+              saveBtn.style.display = 'inline-flex';
+              toggleBtn.textContent = '切换到阅读模式';
+          } else {
+              saveCurrentChapterEdits(); 
+              titleEl.classList.remove('editing-active');
+              outputEl.classList.remove('editing-active');
+              saveBtn.style.display = 'none';
+              toggleBtn.textContent = '切换到编辑模式';
+          }
+      }
+      el('btnToggleEditMode').onclick = () => toggleWriterEditMode(!isWriterEditMode);
+
+      // Settings Review Panel
+      async function renderSettingsReview() {
+          if (!currentBook) return;
+          const s = currentBook.settings;
+          const reviewContentEl = el('reviewContent');
+          const styleNote = s.styleReference ? `<p><strong>已学习风格：：</strong>是 (文本长度 ${s.styleReference.length} 字符)</p>` : '';
+          reviewContentEl.innerHTML = `
+              <p><strong>书名：：</strong>${currentBook.title}</p>
+              <p><strong>题材：：</strong>${s.genre} | <strong>风格：：</strong>${s.style}</p>
+              <p><strong>叙事：：</strong>${s.pov} | <strong>时态：：</strong>${s.tense}</p>
+              <p><strong>参数：：</strong>${s.chapterWords}字/章 | 上下文 ${s.contextMemory}章 | 温度 ${s.temperature}</p>
+              ${s.characters ? `<p><strong>角色：：</strong><br>${s.characters.replace(/\n/g, '<br>')}</p>` : ''}
+              ${s.world ? `<p><strong>世界观：：</strong><br>${s.world.replace(/\n/g, '<br>')}</p>` : ''}
+              ${styleNote}
+              <p><strong>大纲：：</strong><br>${s.outline.replace(/\n/g, '<br>')}</p>
+          `;
+          // Fix for "本书设定回顾" collapse:
+          el('reviewContent').classList.remove('hidden'); // Ensure it's initially visible
+          el('btnCollapseReview').textContent = '折叠';
+      }
+
+      // Fix: Collapse button for "本书设定回顾"
+      const settingsReviewPanel = el('settingsReviewPanel');
+      const reviewHeader = el('reviewHeader');
+      const reviewContent = el('reviewContent');
+      const btnCollapseReview = el('btnCollapseReview');
+
+      if (reviewHeader && reviewContent && btnCollapseReview) {
+          reviewHeader.onclick = (e) => {
+              // Prevent button click from bubbling to header, if btnCollapseReview is clicked directly
+              if (e.target === btnCollapseReview || btnCollapseReview.contains(e.target)) {
+                  e.stopPropagation(); 
+              }
+              reviewContent.classList.toggle('hidden');
+              btnCollapseReview.textContent = reviewContent.classList.contains('hidden') ? '展开' : '折叠';
+          };
+      }
+
+      // Rewrite Panel Collapse
+      const rewriteContentEl = el('rewriteContent');
+      const btnCollapseRewrite = el('btnCollapseRewrite');
+      if (rewriteContentEl && btnCollapseRewrite) {
+          btnCollapseRewrite.onclick = () => {
+              const isHidden = rewriteContentEl.classList.toggle('hidden');
+              btnCollapseRewrite.textContent = isHidden ? '展开' : '折叠';
+          };
+      }
+      
+      // Total Word Count
+      async function updateTotalWordCount() {
+          if (!currentBook) return;
+          let total = 0;
+          currentBook.chapters.forEach(ch => { total += ch.text.length; });
+          el('totalWordCount').innerHTML = `📊 总字数: ${total.toLocaleString()}`;
+          await renderBookList(); 
+      }
+
+      // Library & Book Details
+      async function saveCurrentBook() {
+          if (!currentBook) return;
+          currentBook.chapters = currentBook.chapters || [];
+          currentBook.archivedChapters = currentBook.archivedChapters || [];
+          currentBook.summaries = currentBook.summaries || [];
+          await dbPut(STORE_NAMES.BOOKS, currentBook);
+          await updateTotalWordCount();
+          localStorage.setItem('currentBookId', currentBook.id);
+      }
+
+      async function renderBookList() {
+          const listEl = el("novelList"); listEl.innerHTML = "";
+          books = await dbGetAll(STORE_NAMES.BOOKS); 
+          if (books.length === 0) { listEl.innerHTML = "<p>你还没有创作任何小说。去“写作设定”页开始你的第一本吧！</p>"; return; }
+          books.slice().sort((a, b) => b.createdAt - a.createdAt).forEach(book => {
+              const card = document.createElement("div"); card.className = "novel-card";
+              let totalWords = 0;
+              (book.chapters || []).forEach(ch => { totalWords += ch.text.length; });
+              card.innerHTML = `<h3>${book.title}</h3><p class="novel-card-meta">创建于: ${new Date(book.createdAt).toLocaleDateString()} | ${book.chapters.length} 章 | 总字数: ${totalWords.toLocaleString()}</p>`;
+              card.onclick = () => openBookDetail(book);
+              listEl.appendChild(card);
+          });
+      }
+
+      async function renderSummariesList(book) {
+          const container = document.getElementById('summariesList');
+          if (!container) return;
+          const summaries = book.summaries || [];
+          if (summaries.length === 0) {
+              container.innerHTML = '<div class="hint">暂无总结，可在小说扩写页手动生成。</div>';
+              return;
+          }
+          container.innerHTML = '';
+          summaries.forEach((sum, idx) => {
+              const div = document.createElement('div');
+              div.className = 'summary-item';
+              div.innerHTML = `
+                <div style="flex:1; cursor:pointer;" class="summary-preview">
+                  <strong>📌 ${sum.title || '阶段性总结'}</strong><br>
+                  <span class="summary-date">${new Date(sum.createdAt).toLocaleString()}</span><br>
+                  <span class="summary-date">章节范围: ${sum.chapterRange}</span>
+                </div>
+                <button class="delete-summary" data-index="${idx}" title="删除此总结">🗑️</button>
+              `;
+              div.querySelector('.summary-preview').onclick = () => {
+                  const summaryView = document.getElementById('summaryViewDialog');
+                  document.getElementById('summaryViewContent').innerText = sum.content;
+                  summaryView.showModal();
+              };
+              const delBtn = div.querySelector('.delete-summary');
+              delBtn.onclick = async (e) => {
+                  e.stopPropagation();
+                  if (confirm(`确定要删除“${sum.title}”吗？此操作不可恢复。`)) {
+                      book.summaries.splice(idx, 1);
+                      await saveCurrentBook();
+                      await renderSummariesList(book);
+                      if (currentBook && currentBook.id === book.id) {
+                          currentBook.summaries = book.summaries;
+                          await saveCurrentBook();
+                      }
+                  }
+              };
+              container.appendChild(div);
+          });
+      }
+
+      async function openBookDetail(book) {
+          el('bookDetailTitle').textContent = book.title;
+          el('bookDetailOutline').textContent = book.settings.outline;
+          const btnContinue = el('btnBookDetailContinue');
+          const btnDownloadActive = el('btnBookDetailDownload');
+          const btnDeleteBook = el('btnBookDetailDelete');
+          btnContinue.onclick = async () => {
+              currentBook = book;
+              currentChapterIndex = book.chapters.length > 0 ? book.chapters.length - 1 : -1;
+              await saveCurrentBook();
+              await renderWriterView();
+              el('bookDetailDialog').close();
+              setView('writer');
+          };
+          btnDownloadActive.onclick = () => { el('bookDetailDialog').close(); openDownloadDialog(book.id); };
+          btnDeleteBook.onclick = async () => {
+              el('bookDetailDialog').close();
+              if (confirm(`确定要删除《${book.title}》吗？此操作不可恢复！`)) {
+                  await dbDelete(STORE_NAMES.BOOKS, book.id);
+                  books = books.filter(bItem => bItem.id !== book.id);
+                  if (currentBook && currentBook.id === book.id) {
+                      currentBook = null;
+                      localStorage.removeItem('currentBookId'); 
+                  }
+                  await renderBookList();
+              }
+          };
+          const createChapterListItem = (chapter, isArchived = false) => {
+              const li = document.createElement('li');
+              const label = document.createElement('label');
+              if (isArchived) {
+                  const checkbox = document.createElement('input'); checkbox.type = 'checkbox'; checkbox.className = 'archive-checkbox'; checkbox.dataset.chapterId = chapter.id;
+                  li.appendChild(checkbox);
+              }
+              label.textContent = isArchived ? `(存档于 ${new Date(chapter.archivedAt).toLocaleDateString()}) ${chapter.title}` : `第 ${chapter.index} 章: ${chapter.title}`;
+              label.onclick = (e) => { e.stopPropagation(); openReadChapter(chapter); };
+              li.appendChild(label);
+              return li;
+          };
+          el('activeChapterCount').textContent = book.chapters.length;
+          const activeList = el('activeChaptersList'); activeList.innerHTML = '';
+          book.chapters.forEach(ch => activeList.appendChild(createChapterListItem(ch)));
+          el('archivedChapterCount').textContent = (book.archivedChapters || []).length;
+          const archivedList = el('archivedChaptersList'); archivedList.innerHTML = '';
+          (book.archivedChapters || []).sort((a,b) => b.archivedAt - a.archivedAt).forEach(ch => archivedList.appendChild(createChapterListItem(ch, true)));
+          el('btnDownloadArchives').onclick = () => downloadArchivedChapters(book);
+          await renderSummariesList(book);
+          el('bookDetailDialog').showModal();
+      }
+      el('closeBookDetail').onclick = () => el('bookDetailDialog').close();
+      
+      // Modified openReadChapter to show suggestions
+      function openReadChapter(chapter) { 
+        el('readChapterTitle').textContent = chapter.title; 
+        el('readChapterContent').textContent = chapter.text; 
+        const suggestionsContainer = el('readChapterNextOptions');
+        suggestionsContainer.innerHTML = ''; // Clear previous suggestions
+        if (chapter.nextOptions && chapter.nextOptions.length > 0) { // Check chapter.nextOptions as this was the original direct property
+            el('readChapterSuggestions').style.display = 'block';
+            // Display suggestions from the chapter's direct nextOptions property if available
+            chapter.nextOptions.forEach(opt => {
+                const b = document.createElement('button');
+                b.className = 'secondary';
+                b.textContent = opt;
+                b.disabled = true; // Make suggestions read-only in read view
+                suggestionsContainer.appendChild(b);
+            });
+        } else if (chapter.allSuggestions && chapter.allSuggestions.length > 0) { // Also check allSuggestions if nextOptions is empty
+            el('readChapterSuggestions').style.display = 'block';
+            chapter.allSuggestions.forEach((group, groupIdx) => {
+                const groupDiv = document.createElement('div');
+                groupDiv.className = 'suggestion-group'; // Use same styling as writer view
+                const groupHeader = document.createElement('div');
+                groupHeader.className = 'suggestion-group-header';
+                groupHeader.textContent = `建议组 ${groupIdx + 1} (${new Date(group.timestamp).toLocaleTimeString()})`;
+                groupDiv.appendChild(groupHeader);
+
+                const optionsDiv = document.createElement('div');
+                optionsDiv.className = 'options'; // Use the class for internal layout
+                group.suggestions.forEach(opt => {
+                    const b = document.createElement('button');
+                    b.className = 'secondary';
+                    b.textContent = opt;
+                    b.disabled = true; // Make suggestions read-only in read view
+                    optionsDiv.appendChild(b);
+                });
+                groupDiv.appendChild(optionsDiv);
+                suggestionsContainer.appendChild(groupDiv);
+            });
+        }
+        else {
+            el('readChapterSuggestions').style.display = 'none';
+        }
+        el('readChapterDialog').showModal(); 
+      }
+      el('closeReadChapter').onclick = () => el('readChapterDialog').close();
+      document.getElementById('closeSummaryView')?.addEventListener('click', () => document.getElementById('summaryViewDialog')?.close());
+
+      // API Model Management
+      async function saveConfigs() { 
+          await dbPut(STORE_NAMES.CONFIGS, { id: 'all', data: configs }); 
+          // Save active IDs to localStorage for quick restore on load
+          localStorage.setItem('activeCfgId', activeCfgId);
+          localStorage.setItem('activeModel', activeModel);
+      }
+
+      function getActiveCfg() { 
+          return configs.find(c => c.id === activeCfgId) || null; 
+      }
+      
+      function getActiveModelId() { 
+          return activeModel;
+      }
+
+      function populateSelect(selectEl, items, valueField, textField, currentVal) { 
+          selectEl.innerHTML = ""; 
+          if (!items || items.length === 0) {
+              const defaultOpt = document.createElement("option");
+              defaultOpt.value = "";
+              defaultOpt.textContent = "无可用模型 / 请加载API配置";
+              selectEl.appendChild(defaultOpt);
+          }
+          items.forEach(item => { const opt = document.createElement("option"); opt.value = item[valueField]; opt.textContent = typeof textField === 'function' ? textField(item) : item[textField]; selectEl.appendChild(opt); }); 
+          if (currentVal && items.some(i => i[valueField] === currentVal)) { selectEl.value = currentVal; } 
+      }
+      
+      async function refreshAllConfigSelects() { 
+          activeCfgId = localStorage.getItem('activeCfgId');
+          populateSelect(el("cfgSelect"), configs, 'id', c => `${c.name} (${c.provider})`, activeCfgId); 
+      }
+
+      async function refreshAllModelSelects() { 
+          activeModel = localStorage.getItem('activeModel');
+          populateSelect(el("modelSelect"), modelList, 'id', 'id', activeModel); 
+      }
+
+      // Handlers for global config/model selects
+      el("cfgSelect").onchange = async () => { activeCfgId = el("cfgSelect").value; localStorage.setItem('activeCfgId', activeCfgId); await handleLoadModels(); };
+      el("modelSelect").onchange = async () => { activeModel = el("modelSelect").value; localStorage.setItem('activeModel', activeModel); };
+
+
+      el("btnAddCfg").onclick = async () => { 
+          const name = el("cfgName").value.trim(), baseUrl = el("cfgBaseUrl").value.trim(), apiKey = el("cfgApiKey").value.trim(), provider = el("cfgProvider").value; 
+          if (!name || !baseUrl || !apiKey) { el("cfgStatus").textContent = "请填写 配置名称 / Base URL / API Key"; return; } 
+          const newConfig = { id: crypto.randomUUID(), name, baseUrl, apiKey, provider, modelsCache: [] }; 
+          configs.push(newConfig); 
+          activeCfgId = newConfig.id; 
+          await saveConfigs(); 
+          await refreshAllConfigSelects(); 
+          el("cfgStatus").textContent = `已保存配置：${name}。`; 
+      };
+
+      el("btnDeleteCfg").onclick = async () => { 
+          if (!activeCfgId) return; 
+          configs = configs.filter(c => c.id !== activeCfgId); 
+          activeCfgId = configs[0]?.id || null; 
+          await saveConfigs(); 
+          await refreshAllConfigSelects(); 
+          modelList = []; 
+          await refreshAllModelSelects(); 
+      };
+
+      async function testApiConnection(baseUrl, apiKey) {
+          const url = `${baseUrl.replace(/\/+$/, '')}/models`;
+          const response = await fetch(url, { headers: { 'Authorization': `Bearer ${apiKey}` } });
+          if (!response.ok) { const err = await response.text(); throw new Error(`API错误 ${response.status}: ${err.slice(0,500)}`); }
+          const data = await response.json();
+          const models = Array.isArray(data) ? data : (data.data || []);
+          return models.map(m => ({ id: m.id })).filter(m => m.id);
+      }
+
+      async function handleLoadModels() {
+          const cfg = getActiveCfg();
+          const statusEl = el("cfgStatus"); 
+
+          if (!cfg) { 
+              statusEl.textContent = "请选择一个有效配置来加载模型。";
+              el('modelSelect').innerHTML = "<option value=''>无可用模型</option>"; 
+              return; 
+          }
+          
+          statusEl.textContent = `正在从 [${cfg.name}] 加载模型...`;
+          try { 
+              modelList = await testApiConnection(cfg.baseUrl, cfg.apiKey); 
+              // Update modelsCache for the active config
+              const configIndex = configs.findIndex(c => c.id === cfg.id);
+              if (configIndex !== -1) {
+                  configs[configIndex].modelsCache = modelList;
+                  await dbPut(STORE_NAMES.CONFIGS, { id: 'all', data: configs });
+              }
+
+              await refreshAllModelSelects(); 
+              statusEl.textContent = `成功从 [${cfg.name}] 加载 ${modelList.length} 个模型。`; 
+              
+              if (modelList.length > 0) {
+                  if (!activeModel || !modelList.some(m => m.id === activeModel)) {
+                      activeModel = modelList[0].id;
+                      localStorage.setItem('activeModel', activeModel);
+                      el('modelSelect').value = activeModel;
+                  }
+              }
+
+          } catch (e) { 
+              statusEl.textContent = `加载模型失败: ${e.message}`; 
+              const configIndex = configs.findIndex(c => c.id === cfg.id);
+              if (configIndex !== -1) {
+                  configs[configIndex].modelsCache = []; 
+                  await dbPut(STORE_NAMES.CONFIGS, { id: 'all', data: configs });
+              }
+              modelList = [];
+              await refreshAllModelSelects();
+          }
+      }
+
+      el("btnTestCfg").onclick = async () => {
+          const baseUrl = el("cfgBaseUrl").value.trim();
+          const apiKey = el("cfgApiKey").value.trim();
+          const statusEl = el("cfgStatus");
+          if (!baseUrl || !apiKey) { statusEl.textContent = "请填写 Base URL 和 API Key"; return; }
+          statusEl.textContent = "测试中...";
+          try { const models = await testApiConnection(baseUrl, apiKey); statusEl.textContent = `测试成功，发现 ${models.length} 个模型。`; } catch (e) { statusEl.textContent = `测试失败: ${e.message}`; }
+      };
+      el("btnLoadModels").onclick = handleLoadModels;
+
+      // --- Writer API Info Display ---
+      function updateWriterApiInfo() {
+          const currentCfg = getActiveCfg();
+          const currentModel = getActiveModelId();
+          el('writerApiName').textContent = currentCfg ? currentCfg.name : '未选择';
+          el('writerModelName').textContent = currentModel || '未选择';
+      }
+      // --- End Writer API Info Display ---
+
+
+      // XP Preferences Management
+      async function loadXpPreferences() {
+          const currentXp = await dbGet(STORE_NAMES.XP_PREFERENCES, 'current');
+          xpPreferences = currentXp ? currentXp.content : '';
+          el('xpPreferencesInput').value = xpPreferences;
+      }
+
+      async function loadXpPreferencesHistory() {
+          xpPreferencesHistory = await dbGetAll(STORE_NAMES.XP_PREFERENCES_HISTORY);
+          const sel = el('xpPreferencesHistorySelect');
+          sel.innerHTML = '<option value="">选择历史 XP 偏好...</option>';
+          xpPreferencesHistory.slice().sort((a, b) => b.createdAt - a.createdAt).forEach(h => {
+              const opt = document.createElement('option');
+              opt.value = h.id;
+              opt.textContent = `${new Date(h.createdAt).toLocaleString()} - ${h.content.substring(0, 30)}...`;
+              sel.appendChild(opt);
+          });
+      }
+
+      el('btnLoadXpPreferences').onclick = async () => {
+          const id = el('xpPreferencesHistorySelect').value;
+          if (id) {
+              const h = xpPreferencesHistory.find(x => x.id == id); 
+              if (h) {
+                  el('xpPreferencesInput').value = h.content;
+                  xpPreferences = h.content;
+                  el('xpPreferencesStatus').textContent = '已加载历史 XP 偏好。';
+              }
+          }
+      };
+
+      el('btnSaveXpPreferences').onclick = async () => {
+          const currentXp = el('xpPreferencesInput').value.trim();
+          if (currentXp) {
+              xpPreferences = currentXp;
+              await dbPut(STORE_NAMES.XP_PREFERENCES, { id: 'current', content: currentXp });
+              await dbPut(STORE_NAMES.XP_PREFERENCES_HISTORY, { createdAt: Date.now(), content: currentXp }); 
+              await loadXpPreferencesHistory();
+              el('xpPreferencesStatus').textContent = 'XP 偏好已保存！';
+          } else {
+              el('xpPreferencesStatus').textContent = 'XP 偏好内容不能为空。';
+          }
+      };
+
+      el('btnDeleteXpPreferencesHistory').onclick = async () => {
+          const id = el('xpPreferencesHistorySelect').value;
+          if (id && confirm('确定删除这条历史 XP 偏好吗？')) {
+              await dbDelete(STORE_NAMES.XP_PREFERENCES_HISTORY, parseInt(id)); 
+              await loadXpPreferencesHistory();
+              el('xpPreferencesStatus').textContent = '历史 XP 偏好已删除。';
+          }
+      };
+
+
+      // Writing Setup Page Interaction
+      el('contextMemory').oninput = () => { el('contextMemoryValue').textContent = el('contextMemory').value; };
+      async function loadSettingsFromBook(book) { 
+          if (!book) return; 
+          const s = book.settings; 
+          el('novelTitle').value = book.title; 
+          el('novelGenre').value = s.genre; el('novelStyle').value = s.style; el('chapterWords').value = s.chapterWords; 
+          el('novelPOV').value = s.pov; el('novelTense').value = s.tense; el('temperature').value = s.temperature; 
+          el('contextMemory').value = s.contextMemory; el('contextMemoryValue').textContent = s.contextMemory;
+          el('aiPersona').value = s.aiPersona; el('novelOutline').value = s.outline; 
+          el('novelCharacters').value = s.characters; el('novelWorld').value = s.world; 
+          if (s.styleReference) { el('style-text-input').value = s.styleReference; el('style-status').textContent = '已应用风格文本'; } else { el('style-text-input').value = ''; el('style-status').textContent = ''; }
+      }
+      async function loadPersonaHistory() { 
+          personaHistory = await dbGetAll(STORE_NAMES.PERSONA_HISTORY);
+          const sel = el('personaHistory'); sel.innerHTML = '<option value="">选择历史模板...</option>'; personaHistory.forEach((p, i) => { const opt = document.createElement('option'); opt.value = p.id; opt.textContent = p.content.substring(0, 30) + '...'; sel.appendChild(opt); }); 
+      }
+      el('btnLoadPersona').onclick = () => { const id = el('personaHistory').value; if (id !== "") el('aiPersona').value = personaHistory.find(p => p.id == id).content; };
+      el('btnSavePersona').onclick = async () => { const currentPersona = el('aiPersona').value.trim(); if (currentPersona && !personaHistory.some(p => p.content === currentPersona)) { await dbPut(STORE_NAMES.PERSONA_HISTORY, { content: currentPersona }); await loadPersonaHistory(); alert('模板已保存！'); } };
+      async function refreshOutlineHistory() { 
+          outlineHistory = await dbGetAll(STORE_NAMES.OUTLINE_HISTORY);
+          const sel = el("outlineHistory"); sel.innerHTML = '<option value="">历史版本...</option>'; outlineHistory.slice().sort((a, b) => b.ts - a.ts).forEach(h => { const opt = document.createElement("option"); opt.value = String(h.id); opt.textContent = new Date(h.ts).toLocaleString(); sel.appendChild(opt); }); 
+      }
+      el("btnRestoreOutline").onclick = () => { const id = Number(el("outlineHistory").value); if (id) { const h = outlineHistory.find(x => x.id === id); if (h) el("novelOutline").value = h.text; } };
+      async function pushOutlineHistory(text) { await dbPut(STORE_NAMES.OUTLINE_HISTORY, { ts: Date.now(), text }); outlineHistory = outlineHistory.slice(-30); await refreshOutlineHistory(); }
+      el("btnImproveOutline").onclick = async () => {
+          const outline = el("novelOutline").value.trim();
+          const statusEl = el("setupMeta");
+          if (!outline) { statusEl.textContent = "请先填写大纲。"; return; }
+          
+          // Capture other relevant settings
+          const novelTitle = el('novelTitle').value.trim();
+          const novelGenre = el('novelGenre').value.trim();
+          const novelStyle = el('novelStyle').value.trim();
+          const novelCharacters = el('novelCharacters').value.trim();
+          const novelWorld = el('novelWorld').value.trim();
+
+          await pushOutlineHistory(outline);
+
+          let userPrompt = `请将以下用户草稿大纲，完善成一个结构更清晰、冲突更明确、包含起承转合的详细大纲，并给出前3章的章节要点。只输出大纲文本。\n\n`;
+          userPrompt += `当前小说设定参考：\n`;
+          if (novelTitle) userPrompt += `小说书名: ${novelTitle}\n`;
+          if (novelGenre) userPrompt += `小说类型/题材: ${novelGenre}\n`;
+          if (novelStyle) userPrompt += `目标读者与风格: ${novelStyle}\n`;
+          if (novelCharacters) userPrompt += `主要角色表:\n${novelCharacters}\n`;
+          if (novelWorld) userPrompt += `世界观设定:\n${novelWorld}\n`;
+          userPrompt += `\n用户草稿大纲：\n${outline}`;
+
+          const messages = [ { role: "system", content: "你是一位资深小说编辑，擅长完善和优化小说大纲。" }, { role: "user", content: userPrompt } ];
+          const cfg = getActiveCfg();
+          const model = getActiveModelId();
+          if (!cfg || !model) { statusEl.textContent = "请选择API线路和模型。"; return; }
+          setButtonLoading(el('btnImproveOutline'), true, 'AI思考中...');
+          statusEl.textContent = 'AI 正在完善大纲...';
+          try {
+              const res = await chatCompletion(cfg.baseUrl, cfg.apiKey, model, messages, Number(currentBook?.settings.temperature || 0.8));
+              const newOutline = res.content.trim();
+              el("novelOutline").value = newOutline;
+              await pushOutlineHistory(newOutline);
+              statusEl.textContent = `大纲已完善。 | 模型: ${res.model}`;
+          } catch (e) { statusEl.textContent = `错误: ${e.message}`; } finally {
+              setButtonLoading(el('btnImproveOutline'), false);
+          }
+      };
+      function buildMasterSystemPrompt() { return el("aiPersona").value.trim() || "你是一位精通各种题材的职业小说家。你的任务是根据用户提供的设定和大纲，创作出情节连贯、文笔优美、引人入胜的章节内容。"; }
+      function buildChapterSystemPrompt() { return `请严格按照本小说的设定规则、人称、时态和风格进行创作，保持情节推进和人物弧光。`; }
+
+      // Non-streaming API Call (with retry)
+      async function chatCompletion(baseUrl, apiKey, model, messages, temperature, retryCount = 1) {
+          const url = `${baseUrl.replace(/\/+$/, '')}/chat/completions`;
+          const body = { model, messages, temperature, stream: false };
+          try {
+              const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` }, body: JSON.stringify(body) });
+              const text = await response.text();
+              if (!response.ok) throw new Error(`API错误 ${response.status}: ${text.slice(0,500)}`);
+              let data; try { data = JSON.parse(text); } catch { throw new Error(`返回非JSON: ${text.slice(0,200)}`); }
+              const content = data?.choices?.[0]?.message?.content;
+              if (typeof content !== 'string') throw new Error('API返回格式不正确，缺少 content');
+              return { content, usage: data.usage, model: data.model };
+          } catch (e) {
+              if (retryCount > 0) {
+                  console.log(`非流式请求失败，1秒后重试（剩余重试次数：${retryCount-1}）`);
+                  await new Promise(r => setTimeout(r, 1000));
+                  return chatCompletion(baseUrl, apiKey, model, messages, temperature, retryCount-1);
+              }
+              throw e;
+          }
+      }
+
+      // Streaming API Call (with abort and retry)
+      async function streamChatCompletion(baseUrl, apiKey, model, messages, temperature, onChunk, retryCount = 1) {
+          const url = `${baseUrl.replace(/\/+$/, '')}/chat/completions`;
+          currentAbortController = new AbortController();
+          const signal = currentAbortController.signal;
+          try {
+              const response = await fetch(url, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+                  body: JSON.stringify({ model, messages, temperature, stream: true }),
+                  signal
+              });
+              if (!response.ok) {
+                  const text = await response.text();
+                  throw new Error(`API错误 ${response.status}: ${text.slice(0,500)}`);
+              }
+              const reader = response.body.getReader();
+              const decoder = new TextDecoder('utf-8');
+              let buffer = '';
+              let fullContent = '';
+              while (true) {
+                  const { done, value } = await reader.read();
+                  if (done) break;
+                  buffer += decoder.decode(value, { stream: true });
+                  const lines = buffer.split('\n');
+                  buffer = lines.pop();
+                  for (const line of lines) {
+                      const trimmed = line.trim();
+                      if (!trimmed || trimmed === 'data: [DONE]') continue;
+                      if (trimmed.startsWith('data: ')) {
+                          try {
+                              const json = JSON.parse(trimmed.slice(6));
+                              const delta = json.choices?.[0]?.delta?.content;
+                              if (delta) {
+                                  fullContent += delta;
+                                  onChunk(delta);
+                              }
+                          } catch (e) { console.warn(e); }
+                      }
+                  }
+              }
+              return { content: fullContent };
+          } catch (e) {
+              if (e.name === 'AbortError') {
+                  throw new Error('用户中止生成');
+              }
+              if (retryCount > 0) {
+                  console.log(`流式请求失败，1秒后重试（剩余重试次数：${retryCount-1}）`);
+                  await new Promise(r => setTimeout(r, 1000));
+                  return streamChatCompletion(baseUrl, apiKey, model, messages, temperature, onChunk, retryCount-1);
+              }
+              throw e;
+          } finally {
+              currentAbortController = null;
+          }
+      }
+
+      // Stop Generation
+      function stopGeneration() {
+          if (currentAbortController) {
+              currentAbortController.abort();
+              isGenerating = false;
+              const metaEl = document.querySelector('#viewWriter .meta, #genMeta');
+              if (metaEl) metaEl.textContent = '生成已中止';
+              generationStage = '中止';
+          }
+      }
+
+      // Core Writing Flow
+      async function renderWriterView() {
+          if (!currentBook || currentBook.chapters.length === 0) { setView('novels'); return; }
+          const ch = currentBook.chapters[currentChapterIndex];
+          el('writerChapterTitle').textContent = ch.title;
+          el('chapterIndicator').textContent = `第 ${currentChapterIndex + 1} / ${currentBook.chapters.length} 章`;
+          el('chapterOutput').textContent = ch.text;
+          el('genMeta').textContent = ch.meta;
+          el('btnPrevChapter').disabled = currentChapterIndex === 0;
+          el('btnNextChapter').disabled = currentChapterIndex === currentBook.chapters.length - 1;
+          
+          el('rewriteContent').classList.toggle('hidden', false); 
+          btnCollapseRewrite.textContent = '折叠'; 
+
+          const isLast = currentChapterIndex === currentBook.chapters.length - 1;
+          el('continueContainer').classList.toggle('hidden', !isLast); // Only show continue/reroll for last chapter
+          
+          // Render next options only if current chapter is the last one
+          const optsContainer = el('nextOptions');
+          optsContainer.innerHTML = ''; // Clear previous reroll groups
+          if (isLast && ch.allSuggestions && ch.allSuggestions.length > 0) {
+              ch.allSuggestions.reverse().forEach((group, groupIdx) => { // Show most recent group first
+                  const groupDiv = document.createElement('div');
+                  groupDiv.className = 'suggestion-group';
+                  const groupHeader = document.createElement('div');
+                  groupHeader.className = 'suggestion-group-header';
+                  groupHeader.textContent = `建议组 ${ch.allSuggestions.length - groupIdx} (${new Date(group.timestamp).toLocaleTimeString()})`;
+                  groupDiv.appendChild(groupHeader);
+
+                  const optionsDiv = document.createElement('div');
+                  optionsDiv.className = 'options';
+                  group.suggestions.forEach(opt => {
+                      const b = document.createElement('button');
+                      b.className = 'secondary';
+                      b.textContent = opt;
+                      b.onclick = () => el('nextPlot').value = opt; // Fill the nextPlot textarea
+                      optionsDiv.appendChild(b);
+                  });
+                  groupDiv.appendChild(optionsDiv);
+                  optsContainer.appendChild(groupDiv);
+              });
+          }
+          // Also show initial nextOptions if available and no allSuggestions yet (backward compatibility)
+          else if (isLast && ch.nextOptions && ch.nextOptions.length > 0) {
+            const groupDiv = document.createElement('div');
+            groupDiv.className = 'suggestion-group';
+            const groupHeader = document.createElement('div');
+            groupHeader.className = 'suggestion-group-header';
+            groupHeader.textContent = `初始建议 (${new Date().toLocaleTimeString()})`;
+            groupDiv.appendChild(groupHeader);
+
+            const optionsDiv = document.createElement('div');
+            optionsDiv.className = 'options';
+            ch.nextOptions.forEach(opt => {
+                const b = document.createElement('button');
+                b.className = 'secondary';
+                b.textContent = opt;
+                b.onclick = () => el('nextPlot').value = opt;
+                optionsDiv.appendChild(b);
+            });
+            groupDiv.appendChild(optionsDiv);
+            optsContainer.appendChild(groupDiv);
+          }
+
+
+          await renderSettingsReview();
+          await updateTotalWordCount();
+          await renderChapterJumpList();
+          el('chapterJumpSelect').value = currentChapterIndex;
+
+          updateWriterApiInfo(); // Update API info display
+      }
+      el('btnPrevChapter').onclick = async () => { if (currentChapterIndex > 0) { if (isGenerating) stopGeneration(); currentChapterIndex--; await renderWriterView(); } };
+      el('btnNextChapter').onclick = async () => { if (currentChapterIndex < currentBook.chapters.length - 1) { if (isGenerating) stopGeneration(); currentChapterIndex++; await renderWriterView(); } };
+
+      // Chapter Jump List
+      async function renderChapterJumpList() {
+          const selectEl = el('chapterJumpSelect');
+          selectEl.innerHTML = '';
+          if (!currentBook || currentBook.chapters.length === 0) {
+              selectEl.style.display = 'none';
+              return;
+          }
+          selectEl.style.display = 'inline-block'; 
+          currentBook.chapters.forEach((ch, index) => {
+              const opt = document.createElement('option');
+              opt.value = index;
+              opt.textContent = `第 ${ch.index} 章: ${ch.title}`;
+              selectEl.appendChild(opt);
+          });
+          selectEl.value = currentChapterIndex;
+      }
+      el('chapterJumpSelect').onchange = async (e) => {
+          if (isGenerating) stopGeneration();
+          currentChapterIndex = Number(e.target.value);
+          await renderWriterView();
+      };
+
+      // Chapter Title & Content Direct Editing
+      async function saveCurrentChapterEdits() {
+          if (!currentBook || currentChapterIndex === -1) return;
+          const currentChapter = currentBook.chapters[currentChapterIndex];
+          const newTitle = el('writerChapterTitle').textContent.trim();
+          const newContent = el('chapterOutput').textContent.trim();
+
+          if (newTitle !== currentChapter.title || newContent !== currentChapter.text) {
+              currentChapter.title = newTitle;
+              currentChapter.text = newContent;
+              currentChapter.meta = `手动编辑于 ${new Date().toLocaleString()}`; 
+              await saveCurrentBook();
+              el('genMeta').textContent = currentChapter.meta;
+              el('btnSaveCurrentChapter').textContent = '💾 保存成功!';
+              setTimeout(() => { el('btnSaveCurrentChapter').textContent = '💾 保存当前章节'; }, 2000);
+          }
+          el('writerChapterTitle').classList.remove('editing-active');
+          el('chapterOutput').classList.remove('editing-active');
+      }
+
+      el('writerChapterTitle').addEventListener('input', () => {
+        el('btnSaveCurrentChapter').textContent = '💾 保存当前章节'; 
+      });
+      el('chapterOutput').addEventListener('input', () => {
+        el('btnSaveCurrentChapter').textContent = '💾 保存当前章节'; 
+      });
+
+      el('writerChapterTitle').addEventListener('focus', () => {
+          if (isWriterEditMode) el('writerChapterTitle').classList.add('editing-active');
+      });
+      el('chapterOutput').addEventListener('focus', () => {
+          if (isWriterEditMode) el('chapterOutput').classList.add('editing-active');
+      });
+      el('writerChapterTitle').addEventListener('blur', saveCurrentChapterEdits);
+      el('chapterOutput').addEventListener('blur', saveCurrentChapterEdits);
+      el('btnSaveCurrentChapter').onclick = saveCurrentChapterEdits;
+
+
+      function getLatestSummary() {
+          if (!currentBook.summaries || currentBook.summaries.length === 0) return null;
+          return currentBook.summaries[currentBook.summaries.length - 1];
+      }
+
+      // Auto-scroll to bottom
+      function scrollToBottom() {
+          const outputDiv = el('chapterOutput');
+          if (outputDiv) outputDiv.scrollTop = outputDiv.scrollHeight;
+      }
+
+      // Set Button Loading State
+      function setButtonLoading(btn, loading, customText = null) {
+          if (!btn) return;
+          if (loading) {
+              btn.disabled = true;
+              btn.dataset.originalText = btn.textContent;
+              btn.innerHTML = `<span class="loader"></span> ${customText || '处理中...'}`;
+          } else {
+              btn.disabled = false;
+              btn.innerHTML = btn.dataset.originalText || (btn.id === 'btnNext' ? '继续扩写下一章' : (btn.id === 'btnGenerateSummary' ? '📝 生成阶段性总结' : (btn.id === 'btnRewriteChapter' ? '确认重写' : (btn.id === 'btnStart' ? '开始扩写第一章' : '按钮'))));
+          }
+      }
+
+      async function generateChapter(nextPlotHint = "", isRewrite = false) {
+          if (isGenerating) {
+              alert('已有生成任务进行中，请稍后或停止');
+              return;
+          }
+          isGenerating = true;
+          const isFirstChapter = currentBook.chapters.length === 0 && !isRewrite;
+          const btn = isFirstChapter ? el("btnStart") : (isRewrite ? el('btnRewriteChapter') : el('btnNext'));
+          const metaEl = isFirstChapter ? el("setupMeta") : el('genMeta'); 
+          const cfg = getActiveCfg(); 
+          const model = getActiveModelId();
+          if (!cfg || !model) { metaEl.textContent = "错误: 请选择有效的 API 线路和模型。"; isGenerating = false; return; }
+          
+          let chapterIndexToGenerate = currentBook.chapters.length + 1;
+          if (isRewrite) {
+            chapterIndexToGenerate = currentChapterIndex + 1;
+          }
+
+          const words = Number(currentBook.settings.chapterWords);
+          const memoryCount = Number(currentBook.settings.contextMemory);
+          
+          let memory = "";
+          if (memoryCount > 0 && currentBook.chapters.length > 0 && !isRewrite) { 
+              const recentChapters = currentBook.chapters.slice(-memoryCount);
+              const parts = [];
+              for (let i = 0; i < recentChapters.length; i++) {
+                  const ch = recentChapters[i];
+                  if (i === recentChapters.length - 1) {
+                      parts.push(`【第${ch.index}章回顾（完整）】\n${ch.text}`);
+                  } else {
+                      parts.push(`【第${ch.index}章回顾（摘要）】\n${ch.text.substring(0, 500)}...`);
+                  }
+              }
+              memory = parts.join("\n\n");
+          } else if (isRewrite && currentChapterIndex > 0) { 
+              const prevChapter = currentBook.chapters[currentChapterIndex - 1];
+              if (prevChapter) {
+                  memory = `【上一章回顾（完整）】\n${prevChapter.text}`;
+              }
+          }
+          
+          let systemContent = `你是一名职业小说家。你的任务是严格遵循以下核心设定来创作。
+# 小说核心设定 (不可修改)
+${el('reviewContent').innerText.trim()}
+# 写作要求
+${buildChapterSystemPrompt()}`;
+          if (currentBook.settings.styleReference) {
+              const styleRef = currentBook.settings.styleReference;
+              const truncated = styleRef.length > 5000 ? styleRef.substring(0, 5000) + '……' : styleRef;
+              systemContent += `\n\n# 请模仿以下小说的写作风格（参考文本）\n${truncated}`;
+          }
+          const latestSummary = getLatestSummary();
+          if (latestSummary) {
+              systemContent += `\n\n# 小说阶段性总结（截至第${latestSummary.endChapter}章）\n${latestSummary.content}\n请务必参考此总结中的剧情发展和伏笔，保持连贯性。`;
+          }
+          // Include XP preferences for chapter generation
+          if (xpPreferences) {
+              systemContent += `\n\n# 用户 XP 偏好和写作要求：\n${xpPreferences}`;
+          }
+          
+          let userPrompt = `请根据以上设定，创作第 ${chapterIndexToGenerate} 章，目标字数约 ${words} 字。`;
+          if (memory) {
+            userPrompt += `\n为保证连续性，以下是最近章节回顾：\n${memory}\n`;
+          }
+          if (nextPlotHint) {
+            userPrompt += `本章剧情重点提示（请优先遵循此提示展开）：${nextPlotHint}\n`;
+          }
+          userPrompt += `输出格式要求（严格遵守）：
+### [此处填写章节标题]
+[此处开始章节正文。请注意：在章节正文内容中绝对不要使用"---"（三个破折号）符号，该符号仅用于分隔章节正文和后续发展建议。]
+---
+#### 后续发展建议
+- [建议1]
+- [建议2]
+- [建议3]
+- [建议4]`; 
+
+          const messages = [ { role:"system", content: systemContent }, { role: "user", content: userPrompt } ];
+          
+          const outputDiv = el('chapterOutput');
+          outputDiv.innerHTML = '';
+          let fullContent = '';
+          const startTime = Date.now();
+          
+          setButtonLoading(btn, true, isFirstChapter ? '开始创作...' : (isRewrite ? '重写中...' : '继续扩写...'));
+          metaEl.textContent = '流式生成中...';
+          generationStage = '请求中';
+
+          try {
+              const result = await streamChatCompletion(cfg.baseUrl, cfg.apiKey, model, messages, Number(currentBook.settings.temperature), (chunk) => {
+                  fullContent += chunk;
+                  outputDiv.innerHTML = fullContent.replace(/\n/g, '<br>');
+                  scrollToBottom();
+                  if (generationStage === '请求中') generationStage = '生成中...';
+                  metaEl.textContent = `流式生成中... ${generationStage}`;
+              }, 1);
+              const latency = Date.now() - startTime;
+              generationStage = '解析中';
+              metaEl.textContent = '生成成功，正在解析...';
+              const content = result.content;
+              const parts = content.split('---'), mainContent = parts[0] || "", suggestionsPart = parts[1] || "";
+              const nextOptions = (suggestionsPart.match(/[-*]\s*(.+)/g) || []).map(s => s.replace(/[-*]\s*/, '').trim());
+              const titleMatch = mainContent.match(/###\s*(.*)/), title = titleMatch ? titleMatch[1].trim() : `第 ${chapterIndexToGenerate} 章`;
+              const text = mainContent.replace(/###.*/, '').trim();
+              const metaText = `模型: ${model} | 耗时: ${latency}ms | 字数: ${text.length}`;
+              
+              const newChapter = { id: crypto.randomUUID(), index: chapterIndexToGenerate, title, text, meta: metaText, nextOptions };
+              
+              currentBook.chapters.push(newChapter);
+              currentChapterIndex = currentBook.chapters.length - 1;
+
+              // Store the newly generated suggestions in allSuggestions
+              // This is where original `nextOptions` is moved to `allSuggestions`
+              currentBook.chapters[currentChapterIndex].allSuggestions = [{ suggestions: nextOptions, timestamp: Date.now() }];
+              // Clear the direct nextOptions property as allSuggestions will be used for rendering
+              delete currentBook.chapters[currentChapterIndex].nextOptions;
+              
+              await saveCurrentBook();
+              await renderWriterView();
+              
+              // Clear nextPlot input after successful generation
+              const nextPlotEl = el('nextPlot');
+              if (nextPlotEl) nextPlotEl.value = '';
+
+              if (isFirstChapter) setView("writer");
+              metaEl.textContent = metaText;
+              generationStage = '完成';
+              
+              const chapterCount = currentBook.chapters.length;
+              if (chapterCount > 0 && chapterCount % 5 === 0 && chapterCount > (currentBook.summaries?.length ? currentBook.summaries[currentBook.summaries.length-1].endChapter : 0)) {
+                  const notification = document.createElement('div');
+                  notification.textContent = `📚 已达成 ${chapterCount} 章！是否生成阶段性总结？`;
+                  notification.style.position = 'fixed'; notification.style.bottom = '80px'; notification.style.right = '20px';
+                  notification.style.backgroundColor = 'var(--accent)'; notification.style.color = 'white';
+                  notification.style.padding = '12px 20px'; notification.style.borderRadius = '8px'; notification.style.zIndex = '9999';
+                  notification.style.cursor = 'pointer';
+                  notification.onclick = () => {
+                      generateSummary();
+                      notification.remove();
+                  };
+                  document.body.appendChild(notification);
+                  setTimeout(() => notification.remove(), 8000);
+              }
+          } catch (e) {
+              metaEl.textContent = `请求失败: ${e.message}`;
+              generationStage = '失败';
+          } finally {
+              setButtonLoading(btn, false);
+              isGenerating = false;
+          }
+      }
+
+      // Reroll Suggestions Function (Modified to append)
+      el('btnRerollSuggestions').onclick = async () => {
+          if (isGenerating || !currentBook || currentChapterIndex === -1) {
+              alert('请等待当前任务完成或先有章节。');
+              return;
+          }
+          if (currentChapterIndex !== currentBook.chapters.length - 1) {
+              alert('只能为最新章节重掷后续发展建议。');
+              return;
+          }
+
+          const btn = el('btnRerollSuggestions');
+          const metaEl = el('genMeta');
+          const cfg = getActiveCfg(); // Use global config
+          const model = getActiveModelId(); // Use global model
+
+          if (!cfg || !model) {
+              metaEl.textContent = "错误: 请选择有效的 API 线路和模型。";
+              return;
+          }
+
+          setButtonLoading(btn, true, '正在重掷建议...');
+          metaEl.textContent = 'AI 正在思考新的建议...';
+
+          try {
+              const currentChapter = currentBook.chapters[currentChapterIndex];
+              const settingsReviewText = el('reviewContent').innerText.trim();
+              
+              // Gather all existing suggestions to inform the AI not to repeat them
+              let allExistingSuggestions = [];
+              if (currentChapter.allSuggestions) {
+                  currentChapter.allSuggestions.forEach(group => {
+                      allExistingSuggestions = allExistingSuggestions.concat(group.suggestions);
+                  });
+              }
+              // Also include legacy nextOptions if it exists
+              if (currentChapter.nextOptions && currentChapter.nextOptions.length > 0) {
+                  allExistingSuggestions = allExistingSuggestions.concat(currentChapter.nextOptions);
+              }
+
+              const existingSuggestionsStr = allExistingSuggestions.length > 0 ? allExistingSuggestions.join('\n- ') : '无';
+              
+              const systemContent = `你是一位创意总监，擅长为小说提供多样化、引人入胜的剧情走向建议。
+# 小说核心设定
+${settingsReviewText}
+# 当前章节内容
+${currentChapter.text}
+# 用户 XP 偏好和写作要求：
+${xpPreferences || '无特别偏好。'}
+
+请根据以上信息，为下一章节提供4个全新的、不同于已有建议的剧情走向（字数不少于20字）。
+已有建议（请避免重复）：
+- ${existingSuggestionsStr}
+
+输出格式要求：
+#### 后续发展建议
+- [建议1]
+- [建议2]
+- [建议3]
+- [建议4]
+请严格遵守上述输出格式，**不要在章节正文或建议内容中额外插入"---"符号，它仅用于章节正文和后续建议之间的分隔。**
+`;
+              const messages = [
+                  { role: "system", content: systemContent },
+                  { role: "user", content: "请提供下一章节的全新剧情建议。" }
+              ];
+
+              const res = await chatCompletion(cfg.baseUrl, cfg.apiKey, model, messages, 0.9); 
+              const content = res.content;
+              const suggestionsPart = content.split('#### 后续发展建议')[1] || "";
+              const newOptions = (suggestionsPart.match(/[-*]\s*(.+)/g) || []).map(s => s.replace(/[-*]\s*/, '').trim());
+
+              if (!currentChapter.allSuggestions) {
+                  currentChapter.allSuggestions = [];
+              }
+              currentChapter.allSuggestions.push({ suggestions: newOptions, timestamp: Date.now() });
+
+              // If legacy nextOptions exists, migrate it to allSuggestions before saving
+              if (currentChapter.nextOptions) {
+                  if (!currentChapter.allSuggestions.some(group => group.suggestions === currentChapter.nextOptions)) { // Avoid duplicating if already added
+                      currentChapter.allSuggestions.unshift({ suggestions: currentChapter.nextOptions, timestamp: currentChapter.createdAt }); // Add original options to start of list
+                  }
+                  delete currentChapter.nextOptions; // Remove legacy property
+              }
+
+              await saveCurrentBook();
+              await renderWriterView(); // Re-render to show new appended suggestions
+
+              metaEl.textContent = `建议已重掷。 | 模型: ${res.model}`;
+
+          } catch (e) {
+              metaEl.textContent = `重掷建议失败: ${e.message}`;
+          } finally {
+              setButtonLoading(btn, false);
+          }
+      };
+      
+      // New button to clear suggestions
+      el('btnClearSuggestions').onclick = async () => {
+          if (!currentBook || currentChapterIndex === -1) return;
+          if (currentChapterIndex !== currentBook.chapters.length - 1) {
+              alert('只能清空最新章节的后续发展建议。');
+              return;
+          }
+          if (confirm('确定要清空所有后续发展建议吗？此操作不可撤销。')) {
+              currentBook.chapters[currentChapterIndex].allSuggestions = [];
+              delete currentBook.chapters[currentChapterIndex].nextOptions; // Also clear legacy
+              await saveCurrentBook();
+              await renderWriterView(); // Re-render to clear suggestions
+          }
+      };
+
+
+      // Generate Summary
+      async function generateSummary() {
+          if (!currentBook) { alert("请先打开一本小说"); return; }
+          const chapters = currentBook.chapters;
+          if (chapters.length === 0) { alert("还没有任何章节，无法生成总结"); return; }
+          const cfg = getActiveCfg(); 
+          const model = getActiveModelId();
+          if (!cfg || !model) { alert("请配置API并加载模型"); return; }
+          
+          const btnGen = el('btnGenerateSummary');
+          setButtonLoading(btnGen, true, '总结生成中...');
+          const metaEl = el('genMeta'); 
+          metaEl.textContent = "正在生成阶段性总结...";
+          
+          try {
+              const lastSummary = getLatestSummary();
+              let startChapter, endChapter, prompt, messages;
+              
+              const settingsReview = el('reviewContent').innerText.trim();
+              
+              if (!lastSummary) {
+                  startChapter = 1;
+                  endChapter = chapters.length;
+                  const chaptersText = chapters.map(ch => {
+                      let content = ch.text;
+                      if (content.length > 8000) content = content.substring(0, 8000) + "……（后续内容已截断）";
+                      return `第${ch.index}章 ${ch.title}\n${content}`;
+                  }).join("\n\n---\n\n");
+                  prompt = `现在重新回顾梳理你的工作，并且把我们现在写的小说做成一个截至目前为止的总结，防止你遗忘我们的小说设定和工作内容，输出以下几大点：
+一、工作内容确认
+二、故事设定回顾
+三、已完成章节总结
+四、情感进展
+五、工作状态确认
+
+小说设定回顾：
+${settingsReview}
+
+全部章节内容：
+${chaptersText}`;
+                  messages = [ { role: "system", content: "你是一位资深小说编辑，擅长梳理剧情和设定。请严格按照上述五大点结构输出总结，内容详实、条理清晰。" }, { role: "user", content: prompt } ];
+              } else {
+                  startChapter = lastSummary.endChapter + 1;
+                  endChapter = chapters.length;
+                  if (startChapter > endChapter) { metaEl.textContent = "没有新章节需要总结。"; setButtonLoading(btnGen, false); return; }
+                  const newChapters = chapters.slice(startChapter-1);
+                  const newChaptersText = newChapters.map(ch => {
+                      let content = ch.text;
+                      if (content.length > 8000) content = content.substring(0, 8000) + "……（后续内容已截断）";
+                      return `第${ch.index}章 ${ch.title}\n${content}`;
+                  }).join("\n\n---\n\n");
+                  prompt = `现在重新回顾梳理你的工作，并且把我们现在写的小说做成一个截至目前为止的总结，防止你遗忘我们的小说设定和工作内容，输出以下几大点：
+一、工作内容确认
+二、故事设定回顾
+三、已完成章节总结
+四、情感进展
+五、工作状态确认
+
+上一次完整总结（范围：第1章 - 第${lastSummary.endChapter}章）内容如下：
+---
+${lastSummary.content}
+---
+
+现在小说又新增了以下章节（第${startChapter}章 - 第${endChapter}章）：
+---
+${newChaptersText}
+---
+
+请根据**上一次的完整总结**和**新增章节的详细内容**，生成一份**新的完整总结**，覆盖从第1章到第${endChapter}章的所有内容。严格按照上述五大点结构输出。`;
+                  messages = [ { role: "system", content: "你是一位资深小说编辑，擅长根据历史总结和新增章节生成更新后的完整总结。请严格按照五大点结构输出，确保连贯完整。" }, { role: "user", content: prompt } ];
+              }
+              
+              const res = await chatCompletion(cfg.baseUrl, cfg.apiKey, model, messages, 0.7);
+              const summaryContent = res.content;
+              if (!currentBook.summaries) currentBook.summaries = [];
+              currentBook.summaries.push({
+                  id: crypto.randomUUID(),
+                  createdAt: Date.now(),
+                  startChapter: 1,
+                  endChapter: endChapter,
+                  chapterRange: `1 - ${endChapter}`,
+                  content: summaryContent,
+                  title: `第1-${endChapter}章总结`
+              });
+              await saveCurrentBook();
+              metaEl.textContent = "总结生成完成！可在「我的书库」书籍详情中查阅。";
+              const notification = document.createElement('div');
+              notification.textContent = "✅ 阶段性总结已生成，点击「查阅」查看详情";
+              notification.style.position = 'fixed'; notification.style.bottom = '20px'; notification.style.right = '20px';
+              notification.style.backgroundColor = 'var(--accent)'; notification.style.color = 'white';
+              notification.style.padding = '12px 20px'; notification.style.borderRadius = '8px'; notification.style.zIndex = '9999';
+              notification.style.cursor = 'pointer';
+              notification.onclick = () => {
+                  if (currentBook) openBookDetail(currentBook);
+                  notification.remove();
+              };
+              document.body.appendChild(notification);
+              setTimeout(() => notification.remove(), 5000);
+          } catch (e) {
+              metaEl.textContent = `总结失败: ${e.message}`;
+          } finally {
+              setButtonLoading(btnGen, false);
+          }
+      }
+      el("btnGenerateSummary").onclick = generateSummary;
+
+      // Start Creation (First Chapter)
+      el("btnStart").onclick = async () => {
+        try {
+          const required = { "novelTitle": "小说书名", "novelGenre": "类型", "novelStyle": "风格", "novelOutline": "大纲", "chapterWords": "字数" };
+          for (const id in required) { const inputEl = el(id); if (inputEl && !inputEl.value.trim()) { throw new Error(`请填写 "${document.querySelector(`label[for=${id}]`).textContent.replace(' (必填)', '')}"`); } }
+          currentBook = { 
+              id: crypto.randomUUID(), title: el('novelTitle').value.trim(), createdAt: Date.now(), chapters: [], archivedChapters: [], summaries: [],
+              settings: { genre: el('novelGenre').value, style: el('novelStyle').value, chapterWords: el('chapterWords').value, pov: el('novelPOV').value, tense: el('novelTense').value, temperature: el('temperature').value, contextMemory: el('contextMemory').value, aiPersona: el('aiPersona').value, outline: el('novelOutline').value, characters: el('novelCharacters').value, world: el('novelWorld').value, styleReference: el('style-text-input').value.trim() || null } 
+          };
+          // For a new book, ensure API/model are set if they are available
+          if (!activeCfgId && configs.length > 0) activeCfgId = configs[0].id;
+          if (!activeModel && modelList.length > 0) activeModel = modelList[0].id;
+          localStorage.setItem('activeCfgId', activeCfgId);
+          localStorage.setItem('activeModel', activeModel);
+
+
+          books.push(currentBook); currentChapterIndex = -1; await saveCurrentBook();
+          const currentPersona = el('aiPersona').value.trim();
+          if (currentPersona && !personaHistory.some(p => p.content === currentPersona)) { await dbPut(STORE_NAMES.PERSONA_HISTORY, { content: currentPersona }); await loadPersonaHistory(); }
+          await renderSettingsReview();
+          await generateChapter();
+        } catch (e) { el("setupMeta").textContent = e.message; }
+      };
+
+      // nextPlot is re-added, this now reads from it
+      el("btnNext").onclick = async () => { await generateChapter(el("nextPlot").value.trim(), false); };
+      el("btnRewriteChapter").onclick = async () => {
+          if (!currentBook) return;
+          const rewritePlot = el('rewritePlot').value.trim();
+          if (!rewritePlot) { el('rewriteMeta').textContent = '请输入新的剧情走向。'; return; }
+          
+          await saveCurrentChapterEdits();
+
+          const isLastChapter = currentChapterIndex === currentBook.chapters.length - 1;
+          const confirmMessage = isLastChapter ? `确定要重写第 ${currentChapterIndex + 1} 章吗？此章节的当前版本将被存档。` : `确定要重写第 ${currentChapterIndex + 1} 章吗？此章节以及之后的所有章节都将被存档。`;
+          if (!confirm(confirmMessage)) return;
+
+          const chapterToArchive = currentBook.chapters[currentChapterIndex];
+          if (!currentBook.archivedChapters) currentBook.archivedChapters = [];
+          currentBook.archivedChapters.push({ ...chapterToArchive, archivedAt: Date.now() });
+
+          if (!isLastChapter) { 
+            const chaptersToArchiveLater = currentBook.chapters.slice(currentChapterIndex + 1); 
+            chaptersToArchiveLater.forEach(ch => { currentBook.archivedChapters.push({ ...ch, archivedAt: Date.now() }); }); 
+          }
+          
+          currentBook.chapters = currentBook.chapters.slice(0, currentChapterIndex);
+          await generateChapter(rewritePlot, true);
+      };
+      async function updateCurrentBookSettings() {
+          if (!currentBook) { el("setupMeta").textContent = "错误：没有打开任何小说。请先从「我的书库」打开一本，或创建新小说。"; return; }
+          const newTitle = el('novelTitle').value.trim();
+          if (!newTitle) { el("setupMeta").textContent = "请填写小说书名。"; return; }
+          const newSettings = {
+              genre: el('novelGenre').value, style: el('novelStyle').value, chapterWords: el('chapterWords').value, pov: el('novelPOV').value, tense: el('novelTense').value, temperature: el('temperature').value, contextMemory: el('contextMemory').value, aiPersona: el('aiPersona').value, outline: el('novelOutline').value, characters: el('novelCharacters').value, world: el('novelWorld').value, styleReference: el('style-text-input').value.trim() || null
+          };
+          currentBook.title = newTitle;
+          currentBook.settings = newSettings;
+          await saveCurrentBook();
+          await renderSettingsReview();
+          el("setupMeta").textContent = "✓ 小说设定已更新！后续扩写将使用新设定。";
+      }
+      el("btnUpdateSettings").onclick = updateCurrentBookSettings;
+
+      // Download Functionality
+      function openDownloadDialog(bookId) { bookToDownloadId = bookId; el('downloadDialog').showModal(); }
+      async function downloadArchivedChapters(book) {
+          if (!book) return;
+          const checkedBoxes = document.querySelectorAll('#archivedChaptersList .archive-checkbox:checked');
+          if (checkedBoxes.length === 0) { alert('请至少选择一个要下载的存档章节。'); return; }
+          const chapterIds = Array.from(checkedBoxes).map(cb => cb.dataset.chapterId);
+          const chaptersToDownload = (book.archivedChapters || []).filter(ch => chapterIds.includes(ch.id));
+          if (chaptersToDownload.length === 1) {
+              const chapter = chaptersToDownload[0];
+              const content = `【${chapter.title} (存档于 ${new Date(chapter.archivedAt).toLocaleString()})】\n\n${chapter.text}`;
+              const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+              triggerDownload(blob, `[存档] ${book.title} - ${chapter.title}.txt`);
+          } else if (chaptersToDownload.length > 1) {
+              if (typeof JSZip === 'undefined') { alert('错误：JSZip 库未加载，无法打包下载。请刷新页面或检查网络。'); return; }
+              const zip = new JSZip();
+              chaptersToDownload.forEach(chapter => { const filename = `第${chapter.index}章 - ${chapter.title.replace(/[\\/:*?"<>|]/g, '_')}.txt`; zip.file(filename, chapter.text); });
+              const blob = await zip.generateAsync({ type: 'blob' });
+              if (confirm('ZIP 文件已生成，点击确定开始下载')) triggerDownload(blob, `[存档] ${book.title} (${chaptersToDownload.length}章).zip`);
+          }
+      }
+      function triggerDownload(blob, filename) { const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = filename; document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(() => URL.revokeObjectURL(url), 100); }
+      async function downloadBook(format) {
+          const book = books.find(b => b.id === bookToDownloadId);
+          if (!book) return;
+          const filename = book.title.replace(/[\\/:*?"<>|]/g, '_');
+          if (format === 'txt-single') { const content = book.chapters.map(c => `【${c.title}】\n\n${c.text}`).join('\n\n---\n\n'); const blob = new Blob([content], { type: 'text/plain;charset=utf-8' }); triggerDownload(blob, `${filename}.txt`); } 
+          else if (format === 'html-single') { const chapterHtml = book.chapters.map(c => `<h2>${c.title}</h2>\n<pre>${c.text}</pre>`).join('\n<hr>\n'); const content = `<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><title>${book.title}</title><style>body{line-height:1.7;max-width:800px;margin:20px auto;padding:20px;font-family:sans-serif;} pre{white-space:pre-wrap;word-wrap:break-word;}</style></head><body><h1>${book.title}</h1>${chapterHtml}</body></html>`; const blob = new Blob([content], { type: 'text/html;charset=utf-8' }); triggerDownload(blob, `${filename}.html`); } 
+          else if (format === 'zip-txt') { if (typeof JSZip === 'undefined') { alert('JSZip 未加载'); return; } const zip = new JSZip(); book.chapters.forEach(c => zip.file(`第${c.index}章 - ${c.title.replace(/[\\/:*?"<>|]/g, '_')}.txt`, c.text)); const blob = await zip.generateAsync({ type: 'blob' }); if (confirm('ZIP 文件已生成，点击确定开始下载')) triggerDownload(blob, `${filename}.zip`); } 
+          else if (format === 'zip-html') { if (typeof JSZip === 'undefined') { alert('JSZip 未加载'); return; } const zip = new JSZip(); book.chapters.forEach(c => { const chapterContent = `<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><title>${c.title}</title><style>body{line-height:1.7;max-width:800px;margin:20px auto;padding:20px;font-family:sans-serif;} pre{white-space:pre-wrap;word-wrap:break-word;}</style></head><body><h1>${c.title}</h1><pre>${c.text}</pre></body></html>`; zip.file(`第${c.index}章 - ${c.title.replace(/[\\/:*?"<>|]/g, '_')}.html`, chapterContent); }); const blob = await zip.generateAsync({ type: 'blob' }); if (confirm('ZIP 文件已生成，点击确定开始下载')) triggerDownload(blob, `${filename}.zip`); }
+      }
+      el('btnCancelDownload').onclick = () => { el('downloadDialog').close(); bookToDownloadId = null; };
+      el('btnConfirmDownload').onclick = () => { downloadBook(el('downloadFormat').value); el('downloadDialog').close(); bookToDownloadId = null; };
+
+      // Style Learning
+      const dropZone = document.getElementById('drop-zone-style');
+      const fileInput = document.getElementById('style-file-input');
+      const styleTextarea = document.getElementById('style-text-input');
+      const applyBtn = document.getElementById('btn-apply-style');
+      const clearBtn = document.getElementById('btn-clear-style');
+      const styleStatus = document.getElementById('style-status');
+      const styleHistorySelect = document.getElementById('style-history-select');
+      const loadStyleBtn = document.getElementById('btn-load-style-history');
+      const deleteStyleBtn = document.getElementById('btn-delete-style-history');
+
+      async function renderStyleHistory() { 
+          styleHistory = await dbGetAll(STORE_NAMES.STYLE_HISTORY);
+          styleHistorySelect.innerHTML = '<option value="">选择历史风格...</option>'; styleHistory.forEach((item) => { const opt = document.createElement('option'); opt.value = item.id; opt.textContent = item.content.substring(0, 40) + (item.content.length > 40 ? '...' : ''); styleHistorySelect.appendChild(opt); }); 
+      }
+      async function addStyleHistory(text) { if (!text.trim()) return; if (!styleHistory.some(s => s.content === text)) { await dbPut(STORE_NAMES.STYLE_HISTORY, { content: text }); await renderStyleHistory(); } }
+
+      dropZone.addEventListener('click', () => fileInput.click());
+      dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.style.borderColor = 'var(--accent)'; });
+      dropZone.addEventListener('dragleave', () => dropZone.style.borderColor = '');
+      dropZone.addEventListener('drop', (e) => { e.preventDefault(); dropZone.style.borderColor = ''; const file = e.dataTransfer.files[0]; if (file && (file.name.endsWith('.txt') || file.name.endsWith('.md'))) { const reader = new FileReader(); reader.onload = (e) => { styleTextarea.value = e.target.result; }; reader.readAsText(file); } else { alert('只支持 .txt 或 .md 文件'); } });
+      fileInput.addEventListener('change', () => { const file = fileInput.files[0]; if (file) { const reader = new FileReader(); reader.onload = (e) => { styleTextarea.value = e.target.result; }; reader.readAsText(file); } });
+      applyBtn.addEventListener('click', async () => { const text = styleTextarea.value.trim(); if (!text) { styleStatus.textContent = '请先粘贴或上传小说文本。'; return; } if (!currentBook) { styleStatus.textContent = '请先创建或打开一本小说（填写书名等必填项并点击“开始扩写”后才能保存风格）。'; return; } await addStyleHistory(text); currentBook.settings.styleReference = text; await saveCurrentBook(); styleStatus.textContent = `风格已应用 (文本长度 ${text.length} 字符)`; await renderSettingsReview(); });
+      clearBtn.addEventListener('click', async () => { if (!currentBook) return; if (currentBook.settings.styleReference) { currentBook.settings.styleReference = null; await saveCurrentBook(); styleTextarea.value = ''; styleStatus.textContent = '风格已清除'; await renderSettingsReview(); } else { styleTextarea.value = ''; styleStatus.textContent = ''; } });
+      loadStyleBtn.addEventListener('click', async () => { const id = styleHistorySelect.value; if (id === '') return; const item = styleHistory.find(s => s.id == id); if (item) { styleTextarea.value = item.content; styleStatus.textContent = '已加载到文本框，点击“应用风格”生效。'; } });
+      deleteStyleBtn.addEventListener('click', async () => { const id = styleHistorySelect.value; if (id === '') return; if (confirm('确定删除这条风格历史吗？')) { await dbDelete(STORE_NAMES.STYLE_HISTORY, parseInt(id)); await renderStyleHistory(); styleHistorySelect.value = ''; } });
+
+      // Inspiration Hub Logic
+      async function showInspirationPanel(panelName) {
+          el('inspirationCreatePanel').classList.toggle('hidden', panelName !== 'create');
+          el('inspirationRecordsPanel').classList.toggle('hidden', panelName !== 'records');
+          el('btnTabInspirationCreate').classList.toggle('active', panelName === 'create');
+          el('btnTabInspirationRecords').classList.toggle('active', panelName === 'records');
+          if (panelName === 'records') {
+            await renderInspirationRecords();
+          }
+      }
+      el('btnTabInspirationCreate').onclick = () => showInspirationPanel('create');
+      el('btnTabInspirationRecords').onclick = () => showInspirationPanel('records');
+
+      // Genre Tag selection logic
+      const inspInputGenreTagsContainer = el('inspInputGenreTags');
+      inspInputGenreTagsContainer.addEventListener('click', (e) => {
+        if (e.target.classList.contains('genre-tag')) {
+          e.target.classList.toggle('selected');
+        }
+      });
+
+      el('btnGenerateInspiration').onclick = async () => {
+          if (isGenerating) {
+              alert('已有生成任务进行中，请稍后。');
+              return;
+          }
+          isGenerating = true;
+          const btn = el('btnGenerateInspiration');
+          const statusEl = el('inspirationStatus');
+          const cfg = getActiveCfg(); // Use global config
+          const model = getActiveModelId(); // Use global model
+
+          if (!cfg || !model) {
+              statusEl.textContent = "错误: 请选择有效的 API 线路和模型。";
+              isGenerating = false;
+              return;
+          }
+
+          setButtonLoading(btn, true, '正在构思灵感...');
+          statusEl.textContent = '正在为你生成灵感大纲...';
+
+          try {
+              const selectedGenres = Array.from(document.querySelectorAll('#inspInputGenreTags .genre-tag.selected')).map(tag => tag.dataset.value).join(', ');
+              const keywords = el('inspInputKeywords').value.trim();
+              const numOutlines = el('inspNumOutlines').value;
+
+              const systemContent = `你是一位专业的创意小说大纲生成器，擅长根据用户的详细喜好和条件，生成独特、引人入胜且能严格满足XP偏好的小说大纲。
+
+# 用户 XP 偏好和写作要求：
+${xpPreferences || '无特别偏好。'}
+
+# 用户要求：
+我需要 ${numOutlines} 篇小说大纲。
+小说类型：${selectedGenres || '不限'}
+关键词/核心设定：${keywords || '不限'}
+
+每篇大纲必须包含以下结构和内容，并以清晰的Markdown格式输出。确保每篇大纲都独立且风格略有差异，且严格符合XP偏好和禁忌。
+---
+### 大纲标题（请用三级标题，如：神秘古堡之谜）
+**书名：** [小说标题，需新颖吸引人]
+**题材：：** [自动补充或提炼，如：赛博朋克+悬疑]
+**风格：：** [自动补充或提炼，如：黑暗、反乌托邦、快节奏]
+**核心设定：：** [简要的世界观、背景、重要机制等]
+**主要角色原型：：** [列出主要角色，简述姓名、性格、背景、特殊能力]
+**剧情梗概：：** [分阶段描述故事主线，包含起承转合，体现冲突和高潮]
+**结局走向：：** [说明结局是HE/BE/OE，并简述主要结果]
+---
+`;
+              const messages = [
+                  { role: "system", content: systemContent },
+                  { role: "user", content: "请生成小说大纲。" }
+              ];
+
+              const res = await chatCompletion(cfg.baseUrl, cfg.apiKey, model, messages, 0.9); 
+              const rawContent = res.content;
+              const generatedOutlines = rawContent.split('---').filter(block => block.trim().startsWith('###')).map(block => block.trim());
+
+              if (generatedOutlines.length === 0) {
+                  statusEl.textContent = '未能生成有效的大纲，请尝试调整关键词或偏好。';
+                  return;
+              }
+
+              for (const outlineText of generatedOutlines) {
+                  const parsedOutline = parseGeneratedOutline(outlineText);
+                  if (parsedOutline) {
+                      const inspirationRecord = {
+                          id: crypto.randomUUID(),
+                          createdAt: Date.now(),
+                          title: parsedOutline.title,
+                          genre: parsedOutline.genre,
+                          style: parsedOutline.style,
+                          outline: parsedOutline.outline,
+                          characters: parsedOutline.characters,
+                          world: parsedOutline.world,
+                          rawContent: outlineText 
+                      };
+                      await dbPut(STORE_NAMES.INSPIRATION_RECORDS, inspirationRecord);
+                  }
+              }
+              statusEl.textContent = `成功生成 ${generatedOutlines.length} 篇灵感大纲。`;
+              await renderInspirationRecords();
+              showInspirationPanel('records'); 
+
+          } catch (e) {
+              statusEl.textContent = `生成灵感失败: ${e.message}`;
+          } finally {
+              setButtonLoading(btn, false);
+              isGenerating = false;
+          }
+      };
+
+      function parseGeneratedOutline(text) {
+          const result = {
+              title: '未知标题',
+              genre: '未知题材',
+              style: '未知风格',
+              outline: '',
+              characters: '',
+              world: ''
+          };
+
+          const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+          
+          let currentField = '';
+          for (const line of lines) {
+              if (line.startsWith('###')) {
+                  result.title = line.replace('###', '').trim();
+              } else if (line.startsWith('**书名：**')) {
+                  // The book name is often the same as the title, or a clearer version.
+                  // We'll prioritize the ### title for the card, but store this for the detail view if different.
+              }
+              else if (line.startsWith('**题材：：**')) {
+                  result.genre = line.replace('**题材：：**', '').trim();
+              } else if (line.startsWith('**风格：：**')) {
+                  result.style = line.replace('**风格：：**', '').trim();
+              } else if (line.startsWith('**核心设定：：**')) {
+                  currentField = 'world';
+                  result.world += line.replace('**核心设定：：**', '').trim() + '\n';
+              } else if (line.startsWith('**主要角色原型：：**')) {
+                  currentField = 'characters';
+                  result.characters += line.replace('**主要角色原型：：**', '').trim() + '\n';
+              } else if (line.startsWith('**剧情梗概：：**')) {
+                  currentField = 'outline';
+                  result.outline += line.replace('**剧情梗概：：**', '').trim() + '\n';
+              } else if (line.startsWith('**结局走向：：**')) {
+                  currentField = ''; 
+              }
+              else {
+                  if (currentField === 'world') result.world += line + '\n';
+                  else if (currentField === 'characters') result.characters += line + '\n';
+                  else if (currentField === 'outline') result.outline += line + '\n';
+              }
+          }
+          result.world = result.world.trim();
+          result.characters = result.characters.trim();
+          result.outline = result.outline.trim();
+          return result;
+      }
+
+
+      async function renderInspirationRecords() {
+          const listEl = el("inspirationList"); listEl.innerHTML = "";
+          inspirationRecords = await dbGetAll(STORE_NAMES.INSPIRATION_RECORDS); 
+          if (inspirationRecords.length === 0) { listEl.innerHTML = "<p>你还没有生成任何灵感大纲。去“创作灵感”页生成你的第一篇吧！</p>"; return; }
+          inspirationRecords.slice().sort((a, b) => b.createdAt - a.createdAt).forEach(record => {
+              const card = document.createElement("div"); card.className = "inspiration-card";
+              // Random light gradient background for aesthetic appeal
+              const colors = [
+                'linear-gradient(135deg, #e0f2f1, #b2dfdb)', /* Teal */
+                'linear-gradient(135deg, #fce4ec, #f8bbd0)', /* Pink */
+                'linear-gradient(135deg, #e3f2fd, #bbdefb)', /* Blue */
+                'linear-gradient(135deg, #fff3e0, #ffe0b2)', /* Orange */
+                'linear-gradient(135deg, #f3e5f5, #e1bee7)'  /* Purple */
+              ];
+              card.style.background = colors[Math.floor(Math.random() * colors.length)];
+
+              const contentDiv = document.createElement('div');
+              contentDiv.className = 'inspiration-card-content';
+              contentDiv.innerHTML = `<h3>${record.title}</h3><p class="inspiration-card-meta">类型: ${record.genre} | 风格: ${record.style} | 生成于: ${new Date(record.createdAt).toLocaleDateString()}</p>`;
+              contentDiv.onclick = () => { openInspirationDetail(record); };
+              card.appendChild(contentDiv);
+              
+              listEl.appendChild(card);
+          });
+      }
+
+      let currentInspirationRecord = null; 
+      async function openInspirationDetail(record) {
+          currentInspirationRecord = record;
+          el('inspirationDetailTitle').textContent = record.title;
+          el('inspirationDetailGenre').textContent = record.genre;
+          el('inspirationDetailStyle').textContent = record.style;
+          el('inspirationDetailWorld').textContent = record.world;
+          el('inspirationDetailCharacters').textContent = record.characters;
+          el('inspirationDetailOutline').textContent = record.outline;
+
+          el('inspirationDetailDialog').showModal();
+      }
+      el('closeInspirationDetail').onclick = () => el('inspirationDetailDialog').close();
+
+      el('btnStartCreationFromInspiration').onclick = async () => {
+          if (!currentInspirationRecord) return;
+          el('novelTitle').value = currentInspirationRecord.title;
+          el('novelGenre').value = currentInspirationRecord.genre;
+          el('novelStyle').value = currentInspirationRecord.style;
+          el('novelOutline').value = currentInspirationRecord.outline;
+          el('novelCharacters').value = currentInspirationRecord.characters;
+          el('novelWorld').value = currentInspirationRecord.world;
+          el('inspirationDetailDialog').close();
+          setView('setup'); 
+          alert('灵感大纲已导入“写作设定”页面，请检查并完善细节后开始创作。');
+      };
+
+      el('btnDeleteInspiration').onclick = async () => {
+          if (!currentInspirationRecord) return;
+          if (confirm(`确定要删除灵感大纲《${currentInspirationRecord.title}》吗？此操作不可恢复！`)) {
+              await dbDelete(STORE_NAMES.INSPIRATION_RECORDS, currentInspirationRecord.id);
+              await renderInspirationRecords();
+              el('inspirationDetailDialog').close();
+          }
+      };
+
+      // Inspiration Records Backup & Restore
+      el('btnBackupInspirationRecords').onclick = async () => {
+          const data = await dbGetAll(STORE_NAMES.INSPIRATION_RECORDS);
+          const jsonStr = JSON.stringify(data, null, 2);
+          const blob = new Blob([jsonStr], { type: 'application/json' });
+          const date = new Date();
+          const filename = `ai_novelist_inspiration_backup_${date.getFullYear()}-${(date.getMonth()+1).toString().padStart(2,'0')}-${date.getDate().toString().padStart(2,'0')}.json`;
+          triggerDownload(blob, filename);
+          alert('灵感数据已下载。');
+      };
+
+      el('btnRestoreInspirationRecords').onclick = () => {
+          el('restoreInspirationFileInput').click();
+      };
+
+      el('restoreInspirationFileInput').addEventListener('change', async (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+
+          if (!confirm('确定要恢复灵感数据吗？这将覆盖所有现有的灵感记录！')) {
+              e.target.value = ''; // Clear file input
+              return;
+          }
+
+          const reader = new FileReader();
+          reader.onload = async (event) => {
+              try {
+                  const importedData = JSON.parse(event.target.result);
+                  if (!Array.isArray(importedData)) {
+                      throw new Error('导入文件格式不正确，应为JSON数组。');
+                  }
+
+                  await dbClear(STORE_NAMES.INSPIRATION_RECORDS); 
+                  for (const record of importedData) {
+                      await dbPut(STORE_NAMES.INSPIRATION_RECORDS, record); 
+                  }
+                  alert('灵感数据恢复成功！');
+                  await renderInspirationRecords(); 
+              } catch (err) {
+                  console.error("恢复灵感数据失败:", err);
+                  alert(`恢复灵感数据失败: ${err.message}`);
+              } finally {
+                  e.target.value = ''; 
+              }
+          };
+          reader.readAsText(file);
+      });
+
+      // Download Inspirations Dialog
+      el('btnDownloadInspirations').onclick = async () => {
+        const dialog = el('downloadInspirationsDialog');
+        const listContainer = el('downloadInspirationList');
+        listContainer.innerHTML = ''; // Clear previous items
+
+        const allInspirations = await dbGetAll(STORE_NAMES.INSPIRATION_RECORDS);
+        if (allInspirations.length === 0) {
+            alert('没有可下载的灵感大纲。');
+            return;
+        }
+
+        allInspirations.sort((a, b) => b.createdAt - a.createdAt).forEach(record => {
+            const div = document.createElement('div');
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.dataset.id = record.id;
+            const label = document.createElement('label');
+            label.textContent = `${record.title} (${record.genre})`;
+            label.setAttribute('for', `download-insp-${record.id}`); // Link label to checkbox
+            checkbox.id = `download-insp-${record.id}`;
+
+            div.appendChild(checkbox);
+            div.appendChild(label);
+            listContainer.appendChild(div);
+        });
+
+        dialog.showModal();
+      };
+
+      el('closeDownloadInspirationsDialog').onclick = () => el('downloadInspirationsDialog').close();
+
+      el('btnSelectAllInspirations').onclick = () => {
+          const checkboxes = el('downloadInspirationList').querySelectorAll('input[type="checkbox"]');
+          const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+          checkboxes.forEach(cb => (cb.checked = !allChecked));
+      };
+
+      el('btnConfirmDownloadInspirations').onclick = async () => {
+          const checkedBoxes = el('downloadInspirationList').querySelectorAll('input[type="checkbox"]:checked');
+          if (checkedBoxes.length === 0) {
+              alert('请至少选择一个要下载的灵感大纲。');
+              return;
+          }
+
+          const selectedIds = Array.from(checkedBoxes).map(cb => cb.dataset.id);
+          const inspirationsToDownload = inspirationRecords.filter(rec => selectedIds.includes(rec.id));
+
+          if (inspirationsToDownload.length === 1) {
+              const record = inspirationsToDownload[0];
+              const content = `# ${record.title}\n\n## 题材/类型\n${record.genre}\n\n## 风格\n${record.style}\n\n## 核心设定\n${record.world}\n\n## 主要角色原型\n${record.characters}\n\n## 剧情梗概\n${record.outline}\n\n---原始AI输出---\n${record.rawContent}`;
+              const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+              triggerDownload(blob, `${record.title.replace(/[\\/:*?"<>|]/g, '_')}.txt`);
+          } else if (inspirationsToDownload.length > 1) {
+              if (typeof JSZip === 'undefined') { alert('错误：JSZip 库未加载，无法打包下载。请刷新页面或检查网络。'); return; }
+              const zip = new JSZip();
+              inspirationsToDownload.forEach(record => {
+                  const filename = `${record.title.replace(/[\\/:*?"<>|]/g, '_')}.txt`;
+                  const content = `# ${record.title}\n\n## 题材/类型\n${record.genre}\n\n## 风格\n${record.style}\n\n## 核心设定\n${record.world}\n\n## 主要角色原型\n${record.characters}\n\n## 剧情梗概\n${record.outline}\n\n---原始AI输出---\n${record.rawContent}`;
+                  zip.file(filename, content);
+              });
+              const blob = await zip.generateAsync({ type: 'blob' });
+              if (confirm('ZIP 文件已生成，点击确定开始下载。')) {
+                  triggerDownload(blob, `AI小说家灵感大纲 (${inspirationsToDownload.length}篇).zip`);
+              }
+          }
+          el('downloadInspirationsDialog').close();
+      };
+      el('btnCancelDownloadInspirations').onclick = () => el('downloadInspirationsDialog').close();
+
+
+      // Backup & Restore All Data
+      const btnBackup = document.getElementById('btnBackupData');
+      const btnRestore = document.getElementById('btnRestoreData');
+      const restoreFileInput = document.getElementById('restoreFileInput');
+      const backupStatus = document.getElementById('backupStatus');
+
+      btnBackup.addEventListener('click', async () => { 
+          const data = {}; 
+          for (const storeName of Object.values(STORE_NAMES)) {
+              data[storeName] = await dbGetAll(storeName);
+          }
+          data.localStorage = {
+              currentBookId: localStorage.getItem('currentBookId'),
+              activeCfgId: localStorage.getItem('activeCfgId'), 
+              activeModel: localStorage.getItem('activeModel')  
+          };
+
+          const jsonStr = JSON.stringify(data, null, 2); 
+          const blob = new Blob([jsonStr], { type: 'application/json' }); 
+          const date = new Date(); 
+          const filename = `ai_novelist_backup_all_data_${date.getFullYear()}-${(date.getMonth()+1).toString().padStart(2,'0')}-${date.getDate().toString().padStart(2,'0')}.json`; 
+          triggerDownload(blob, filename); 
+          backupStatus.textContent = '备份已下载'; setTimeout(() => { backupStatus.textContent = ''; }, 3000); 
+      });
+
+      btnRestore.addEventListener('click', () => { restoreFileInput.click(); });
+      restoreFileInput.addEventListener('change', async (e) => { 
+          const file = e.target.files[0];
+          if (!file) return;
+
+          if (!confirm('确定要恢复所有数据吗？这将清除所有现有数据并导入备份文件内容！')) {
+              e.target.value = ''; 
+              return;
+          }
+
+          const reader = new FileReader(); 
+          reader.onload = async (event) => { 
+              try { 
+                  const data = JSON.parse(event.target.result); 
+                  
+                  for (const storeName of Object.values(STORE_NAMES)) {
+                      await dbClear(storeName); 
+                      if (data[storeName] && Array.isArray(data[storeName])) {
+                          for (const record of data[storeName]) {
+                              await dbPut(storeName, record); 
+                          }
+                      }
+                  }
+
+                  if (data.localStorage) {
+                      for (const key in data.localStorage) {
+                          localStorage.setItem(key, data.localStorage[key]);
+                      }
+                  }
+
+                  backupStatus.textContent = '恢复成功，页面即将刷新...'; 
+                  setTimeout(() => { location.reload(); }, 1500); 
+              } catch (err) { 
+                  backupStatus.textContent = '恢复失败：文件格式错误或数据结构不匹配'; console.error(err); 
+              } finally {
+                  e.target.value = ''; 
+              }
+          }; 
+          reader.readAsText(file); 
+      });
+
+      // Initialization
+      async function initialize() {
+          await openDB(); 
+
+          const isMigratedFlag = localStorage.getItem('migratedToIndexedDB');
+          if (isMigratedFlag !== 'true') {
+              console.warn("Detected old localStorage data or no migration flag. Attempting one-time migration to IndexedDB...");
+              const lsKeysToMigrate = {
+                  'books': STORE_NAMES.BOOKS,
+                  'configs': STORE_NAMES.CONFIGS,
+                  'personaHistory': STORE_NAMES.PERSONA_HISTORY,
+                  'outlineHistory': STORE_NAMES.OUTLINE_HISTORY,
+                  'uiSettings': STORE_NAMES.UI_SETTINGS,
+                  'styleHistory': STORE_NAMES.STYLE_HISTORY
+              };
+
+              for (const lsKey in lsKeysToMigrate) {
+                  const idbStoreName = lsKeysToMigrate[lsKey];
+                  const lsDataRaw = localStorage.getItem(lsKey);
+                  if (lsDataRaw) {
+                      try {
+                          const lsData = JSON.parse(lsDataRaw);
+                          if (lsData) {
+                              if (Array.isArray(lsData)) { 
+                                  for (const item of lsData) {
+                                      if (!item.id && [STORE_NAMES.PERSONA_HISTORY, STORE_NAMES.OUTLINE_HISTORY, STORE_NAMES.STYLE_HISTORY].includes(idbStoreName)) {
+                                          await dbPut(idbStoreName, { content: item.text || item }); 
+                                      } else if (item.id) { 
+                                          await dbPut(idbStoreName, item);
+                                      }
+                                  }
+                              } else { 
+                                  await dbPut(idbStoreName, { id: 'current', ...lsData });
+                              }
+                              console.log(`Migrated ${lsKey} to IndexedDB.`);
+                          }
+                      } catch (e) {
+                          console.error(`Error parsing or migrating ${lsKey} from localStorage:`, e);
+                      }
+                      localStorage.removeItem(lsKey); 
+                  }
+              }
+              // For global config, the old 'activeCfgId' in localStorage was the global one.
+              activeCfgId = localStorage.getItem('activeCfgId');
+              if (activeCfgId) localStorage.setItem('activeCfgId', activeCfgId); 
+              // Removed context-specific active IDs as they are no longer used
+              localStorage.removeItem('activeWriterCfgId'); localStorage.removeItem('activeWriterModel');
+              localStorage.removeItem('activeRerollCfgId'); localStorage.removeItem('activeRerollModel');
+              localStorage.removeItem('activeInspirationCfgId'); localStorage.removeItem('activeInspirationModel');
+              localStorage.removeItem('globalActiveCfgId'); 
+              localStorage.removeItem('modelList'); 
+
+              localStorage.setItem('migratedToIndexedDB', 'true'); 
+              console.log("Data migration from localStorage to IndexedDB attempted.");
+          }
+
+
+          books = await dbGetAll(STORE_NAMES.BOOKS);
+          const loadedConfigs = await dbGet(STORE_NAMES.CONFIGS, 'all');
+          configs = loadedConfigs ? loadedConfigs.data : [];
+          personaHistory = await dbGetAll(STORE_NAMES.PERSONA_HISTORY);
+          outlineHistory = await dbGetAll(STORE_NAMES.OUTLINE_HISTORY);
+          const loadedUISettings = await dbGet(STORE_NAMES.UI_SETTINGS, 'current');
+          uiSettings = loadedUISettings || uiSettings; 
+          styleHistory = await dbGetAll(STORE_NAMES.STYLE_HISTORY);
+          inspirationRecords = await dbGetAll(STORE_NAMES.INSPIRATION_RECORDS);
+          
+          await loadXpPreferences(); 
+          await loadXpPreferencesHistory(); 
+
+          activeCfgId = localStorage.getItem('activeCfgId'); 
+          activeModel = localStorage.getItem('activeModel'); 
+
+
+          applyUISettings();
+          await refreshAllConfigSelects();
+          if (activeCfgId && configs.find(c => c.id === activeCfgId)) {
+            await handleLoadModels(); 
+          } else if (configs.length > 0) {
+            activeCfgId = configs[0].id; 
+            localStorage.setItem('activeCfgId', activeCfgId);
+            await handleLoadModels();
+          } else {
+            modelList = []; 
+            await refreshAllModelSelects();
+          }
+
+          await refreshOutlineHistory();
+          await loadPersonaHistory();
+          await renderStyleHistory(); 
+
+          const currentBookId = localStorage.getItem('currentBookId');
+          if (currentBookId) {
+            currentBook = books.find(b => b.id === currentBookId) || null;
+            if (currentBook) {
+                currentChapterIndex = currentBook.chapters.length > 0 ? currentBook.chapters.length - 1 : -1;
+            }
+          }
+          
+          if (currentBook && currentBook.chapters.length > 0) { 
+            await renderWriterView(); 
+            setView('writer'); 
+            toggleWriterEditMode(true); 
+          } else { 
+            setView('novels'); 
+          }
+          
+          await updateTotalWordCount();
+      }
+      initialize();
+    })();
+  </script>
+</body>
+</html>
